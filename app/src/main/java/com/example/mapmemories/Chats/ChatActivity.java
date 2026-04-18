@@ -63,6 +63,7 @@ import com.example.mapmemories.Profile.UserProfileActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.Settings.Setting;
 import com.example.mapmemories.systemHelpers.AudioPlayerManager;
+import com.example.mapmemories.systemHelpers.CryptoHelper;
 import com.example.mapmemories.systemHelpers.TimeFormatter;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.card.MaterialCardView;
@@ -172,6 +173,8 @@ public class ChatActivity extends AppCompatActivity {
     private ImageButton gpClose, gpDownload;
     private android.widget.SeekBar gpSeekBar;
     private boolean isGlobalPlayerExpanded = false;
+
+    private ActivityResultLauncher<String> pickFileLauncher;
 
     /* |-----------------------------------------------------------------------|
      * |                           ЖИЗНЕННЫЙ ЦИКЛ                          |
@@ -393,8 +396,12 @@ public class ChatActivity extends AppCompatActivity {
 
         MessageSwipeController swipeController = new MessageSwipeController(this, position -> {
             ChatMessage message = messageList.get(position);
-            chatAdapter.notifyItemChanged(position);
-            setupReplyPreview(message, false);
+
+            // Даем плашке 150 миллисекунд, чтобы плавно отпружинить на место,
+            // и только потом показываем панель ответа и поднимаем клавиатуру.
+            new Handler(getMainLooper()).postDelayed(() -> {
+                setupReplyPreview(message, false);
+            }, 150);
         });
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeController);
         itemTouchHelper.attachToRecyclerView(chatRecyclerView);
@@ -431,7 +438,7 @@ public class ChatActivity extends AppCompatActivity {
                 if (editingMessageId != null) {
                     String editedId = editingMessageId;
                     Map<String, Object> updates = new HashMap<>();
-                    updates.put("text", text);
+                    updates.put("text", CryptoHelper.encrypt(text));
 
                     if (replyingToMessage != null) {
                         updates.put("replyMessageId", replyingToMessage.getMessageId());
@@ -488,6 +495,76 @@ public class ChatActivity extends AppCompatActivity {
         requestMicLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
             if (!isGranted) Toast.makeText(this, "Для отправки ГС нужен микрофон", Toast.LENGTH_SHORT).show();
         });
+        pickFileLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                String fileName = getFileNameFromUri(uri);
+                uploadFileToCloudinaryAndSend(uri, fileName);
+            }
+        });
+    }
+
+    @android.annotation.SuppressLint("Range")
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    result = cursor.getString(cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME));
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) result = result.substring(cut + 1);
+        }
+        return result != null ? result : "Неизвестный файл";
+    }
+
+    private void uploadFileToCloudinaryAndSend(Uri fileUri, String fileName) {
+        String tempMessageId = "temp_file_" + System.currentTimeMillis();
+
+        // Имя файла кладем в текст (шифруем!), а локальный URI в imageUrl для превью
+        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, fileUri.toString(), CryptoHelper.encrypt(fileName), System.currentTimeMillis(), "file");
+        tempMsg.setMessageId(tempMessageId);
+        attachReplyDataToMessage(tempMsg);
+
+        messageList.add(tempMsg);
+        chatAdapter.addUploadingMessage(tempMessageId);
+        chatAdapter.notifyItemInserted(messageList.size() - 1);
+        chatRecyclerView.scrollToPosition(messageList.size() - 1);
+
+        java.util.concurrent.Future<?> uploadTask = Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(fileUri);
+                Map<String, Object> options = new HashMap<>();
+                options.put("resource_type", "auto"); // ВАЖНО: "auto" позволяет грузить PDF, ZIP, DOCX и т.д.
+                Map uploadResult = cloudinary.uploader().upload(inputStream, options);
+                String secureUrl = (String) uploadResult.get("secure_url");
+
+                runOnUiThread(() -> {
+                    uploadTasks.remove(tempMessageId);
+                    removeTempMessageLocally(tempMessageId);
+                    if (!isFinishing() && !isDestroyed()) {
+                        String messageId = chatRef.push().getKey();
+                        if (messageId != null) {
+                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encrypt(fileName), System.currentTimeMillis(), "file");
+                            message.setMessageId(messageId);
+                            attachReplyDataToMessage(message);
+                            chatRef.child(messageId).setValue(message);
+                            closeReplyPreview();
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    uploadTasks.remove(tempMessageId);
+                    removeTempMessageLocally(tempMessageId);
+                    Toast.makeText(ChatActivity.this, "Ошибка отправки файла", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+        uploadTasks.put(tempMessageId, uploadTask);
     }
 
     private void setupGlobalPlayer() {
@@ -578,11 +655,11 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onEditMessage(ChatMessage message) {
                 editingMessageId = message.getMessageId();
-                etMessageInput.setText(message.getText());
+                etMessageInput.setText(CryptoHelper.decrypt(message.getText()));
                 etMessageInput.setSelection(message.getText().length());
                 replyPreviewContainer.setVisibility(View.VISIBLE);
                 tvReplySender.setText("Редактирование");
-                tvReplyText.setText(message.getText());
+                tvReplyText.setText(CryptoHelper.decrypt(message.getText()));
                 updateInputUI();
                 etMessageInput.requestFocus();
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -759,7 +836,7 @@ public class ChatActivity extends AppCompatActivity {
             StringBuilder sb = new StringBuilder();
             for (ChatMessage msg : messageList) {
                 if (selectedIds.contains(msg.getMessageId()) && "text".equals(msg.getType())) {
-                    sb.append(msg.getText()).append("\n");
+                    sb.append(CryptoHelper.decrypt(msg.getText())).append("\n");
                 }
             }
             if (sb.length() > 0) {
@@ -849,6 +926,21 @@ public class ChatActivity extends AppCompatActivity {
         btnPhoto.setOnClickListener(v -> {
             popupWindow.dismiss();
             pickImageLauncher.launch("image/*");
+        });
+
+
+        TextView btnFile = new TextView(this);
+        btnFile.setText("📁 Документ / Файл");
+        btnFile.setTextSize(16f);
+        btnFile.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        btnFile.setPadding(48, 36, 64, 36);
+        btnFile.setBackgroundResource(outValue.resourceId);
+
+        menuLayout.addView(btnFile);
+
+        btnFile.setOnClickListener(v -> {
+            popupWindow.dismiss();
+            pickFileLauncher.launch("*/*"); // Выбор любого файла
         });
 
         menuLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -1426,8 +1518,20 @@ public class ChatActivity extends AppCompatActivity {
 
     private void setupReplyPreview(ChatMessage message, boolean isEditing) {
         VibratorHelper.vibrate(this, 30);
+
         replyingToMessage = message;
-        replyPreviewContainer.setVisibility(View.VISIBLE);
+
+        if (replyPreviewContainer.getVisibility() == View.GONE) {
+            replyPreviewContainer.setVisibility(View.VISIBLE);
+            replyPreviewContainer.setTranslationY(50f);
+            replyPreviewContainer.setAlpha(0f);
+            replyPreviewContainer.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(200)
+                    .setInterpolator(new OvershootInterpolator(1.0f))
+                    .start();
+        }
 
         if (!isEditing) editingMessageId = null;
 
@@ -1435,10 +1539,11 @@ public class ChatActivity extends AppCompatActivity {
         tvReplySender.setText(isEditing ? "Редактирование" : sender);
 
         String previewText = "";
-        if ("text".equals(message.getType())) previewText = message.getText();
+        if ("text".equals(message.getType())) previewText = CryptoHelper.decrypt(message.getText());
         else if ("image".equals(message.getType())) previewText = "📷 Фотография";
         else if ("voice".equals(message.getType())) previewText = "🎤 Голосовое сообщение";
         else if ("post".equals(message.getType())) previewText = "🗺️ Воспоминание";
+        else if ("file".equals(message.getType())) previewText = "📁 Документ";
         tvReplyText.setText(previewText);
 
         etMessageInput.requestFocus();
@@ -1463,7 +1568,7 @@ public class ChatActivity extends AppCompatActivity {
     private void sendTextMessage(String text) {
         String messageId = chatRef.push().getKey();
         if (messageId != null) {
-            ChatMessage message = new ChatMessage(currentUserId, targetUserId, text, System.currentTimeMillis(), "text");
+            ChatMessage message = new ChatMessage(currentUserId, targetUserId, CryptoHelper.encrypt(text), System.currentTimeMillis(), "text");
             message.setMessageId(messageId);
             attachReplyDataToMessage(message);
             chatRef.child(messageId).setValue(message);
@@ -1473,7 +1578,9 @@ public class ChatActivity extends AppCompatActivity {
 
     private void uploadImageToCloudinaryAndSend(Uri imageUri, String caption) {
         String tempMessageId = "temp_" + System.currentTimeMillis();
-        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), caption, System.currentTimeMillis(), "image");
+
+        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), CryptoHelper.encrypt(caption), System.currentTimeMillis(), "image");
+
         tempMsg.setMessageId(tempMessageId);
         attachReplyDataToMessage(tempMsg);
 
@@ -1496,7 +1603,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (!isFinishing() && !isDestroyed()) {
                         String messageId = chatRef.push().getKey();
                         if (messageId != null) {
-                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, caption, System.currentTimeMillis(), "image");
+                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encrypt(caption), System.currentTimeMillis(), "image");
                             message.setMessageId(messageId);
 
                             if (replyingToMessage != null) {
@@ -1705,7 +1812,7 @@ public class ChatActivity extends AppCompatActivity {
                                 ChatMessage msg = msgSnap.getValue(ChatMessage.class);
                                 if (msg != null) {
                                     pinnedMessageContainer.setVisibility(View.VISIBLE);
-                                    String text = "text".equals(msg.getType()) ? msg.getText() : ("image".equals(msg.getType()) ? "📷 Фотография" : ("voice".equals(msg.getType()) ? "🎤 Голосовое" : "🗺️ Воспоминание"));
+                                    String text = "text".equals(msg.getType()) ? CryptoHelper.decrypt(msg.getText()) : ("image".equals(msg.getType()) ? "📷 Фотография" : ("voice".equals(msg.getType()) ? "🎤 Голосовое" : "🗺️ Воспоминание"));
                                     tvPinnedText.setText(text);
                                     pinnedMessageContainer.setOnClickListener(v -> scrollToAndHighlightMessage(pinnedId));
                                 }
@@ -1734,23 +1841,17 @@ public class ChatActivity extends AppCompatActivity {
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (rootLayout == null) return super.dispatchTouchEvent(ev);
 
-        // Блокируем свайп закрытия, если включен режим выделения сообщений
-        if (chatAdapter != null && !chatAdapter.getSelectedMessageIds().isEmpty()) {
-            return super.dispatchTouchEvent(ev);
-        }
-        // Блокируем свайп закрытия, если открыто фото
-        if (isGalleryOpen) {
-            return super.dispatchTouchEvent(ev);
-        }
-
+        // Блокируем свайп закрытия, если включен режим выделения сообщений или открыта галерея
+        if (chatAdapter != null && !chatAdapter.getSelectedMessageIds().isEmpty()) return super.dispatchTouchEvent(ev);
+        if (isGalleryOpen) return super.dispatchTouchEvent(ev);
 
         switch (ev.getActionMasked()) {
             case android.view.MotionEvent.ACTION_DOWN:
                 startX = ev.getRawX();
                 startY = ev.getRawY();
                 isSwipingToClose = false;
-                // Свайп работает от левого края (захватываем 15% ширины экрана, как в ТГ)
-                canSwipeBack = startX < (screenWidth * 0.95f);
+                // Свайп работает от левого края (захватываем 15% ширины экрана)
+                canSwipeBack = startX < (screenWidth * 0.9f);
                 break;
 
             case android.view.MotionEvent.ACTION_MOVE:
@@ -1758,10 +1859,10 @@ public class ChatActivity extends AppCompatActivity {
                 float dx = ev.getRawX() - startX;
                 float dy = ev.getRawY() - startY;
 
-                // Используем системный touchSlop вместо жестких 40px
-                if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                // Чувствительность выше: реагируем быстрее, если движение горизонтальное
+                if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.2f) {
                     isSwipingToClose = true;
-                    // Прячем клавиатуру при начале свайпа
+                    // Прячем клавиатуру
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     if (imm != null && getCurrentFocus() != null) imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
 
@@ -1773,8 +1874,9 @@ public class ChatActivity extends AppCompatActivity {
                 }
 
                 if (isSwipingToClose) {
-                    rootLayout.setTranslationX(Math.max(0, dx));
-                    return true; // Перехватываем свайп на себя
+                    // Коэффициент 1.2 делает так, что окно движется чуть быстрее пальца (эффект легкости)
+                    rootLayout.setTranslationX(Math.max(0, dx * 1.2f));
+                    return true;
                 }
                 break;
 
@@ -1782,15 +1884,24 @@ public class ChatActivity extends AppCompatActivity {
             case android.view.MotionEvent.ACTION_CANCEL:
                 if (isSwipingToClose) {
                     float dxUp = ev.getRawX() - startX;
-                    if (dxUp > screenWidth / 3f) {
-                        // АНИМАЦИЯ ЗАКРЫТИЯ: Уводим окно вправо и закрываем активити
-                        rootLayout.animate().translationX(screenWidth).setDuration(200).withEndAction(() -> {
-                            finish();
-                            overridePendingTransition(0, 0); // Отключаем стандартную системную анимацию
-                        }).start();
+
+                    // ХВАТИТ ЛИШЬ 15% ЭКРАНА, ЧТОБЫ ЗАКРЫТЬ
+                    if (dxUp > screenWidth * 0.15f) {
+                        rootLayout.animate()
+                                .translationX(screenWidth)
+                                .setDuration(150) // АНИМАЦИЯ БЫСТРЕЕ (150мс вместо 200)
+                                .setInterpolator(new android.view.animation.AccelerateInterpolator()) // Плавное ускорение
+                                .withEndAction(() -> {
+                                    finish();
+                                    overridePendingTransition(0, 0);
+                                }).start();
                     } else {
-                        // Возвращаем окно обратно, если свайпнули недостаточно
-                        rootLayout.animate().translationX(0).setDuration(200).start();
+                        // Возврат (Snap back)
+                        rootLayout.animate()
+                                .translationX(0)
+                                .setDuration(150)
+                                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                                .start();
                     }
                     isSwipingToClose = false;
                     return true;

@@ -2,11 +2,14 @@ package com.example.mapmemories.Lenta;
 
 import android.content.Intent;
 import android.graphics.drawable.Animatable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.badge.BadgeDrawable;
@@ -55,6 +58,22 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.net.TrafficStats;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.view.Window;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import com.google.android.material.card.MaterialCardView;
+import androidx.core.content.ContextCompat;
+
 public class MainActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
@@ -66,6 +85,10 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference userRef;
     private long backPressedTime;
     private boolean isDockVisible = true;
+
+    private TextView appTitle;
+    private DatabaseReference connectedRef;
+    private ValueEventListener connectionListener;
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
@@ -106,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
         observeOfflinePosts();
         setupDoubleBackExit();
         checkNotificationPermission();
+        setupConnectionObserver();
     }
 
     private void checkCurrentUser() {
@@ -149,6 +173,8 @@ public class MainActivity extends AppCompatActivity {
         fabSettings = findViewById(R.id.fabSettings);
         profileButton = findViewById(R.id.profileButton);
         offlineBadge = findViewById(R.id.offlineBadge);
+        appTitle = findViewById(R.id.appTitle);
+        appTitle.setOnClickListener(v -> showNetworkStatsDialog());
     }
 
     public void toggleBottomDock(boolean show) {
@@ -157,6 +183,274 @@ public class MainActivity extends AppCompatActivity {
         } else if (!show && isDockVisible) {
             bottomDock.animate().translationY(bottomDock.getHeight() + 150).setDuration(300).withEndAction(() -> isDockVisible = false).start();
         }
+    }
+
+
+
+    private void showNetworkStatsDialog() {
+        com.example.mapmemories.systemHelpers.VibratorHelper.vibrate(this, 30);
+        android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+
+        View activityRootView = getWindow().getDecorView().findViewById(android.R.id.content);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && activityRootView != null) {
+            activityRootView.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(20f, 20f, android.graphics.Shader.TileMode.MIRROR));
+        }
+
+        android.widget.FrameLayout rootLayout = new android.widget.FrameLayout(this);
+        rootLayout.setBackgroundColor(android.graphics.Color.parseColor("#B3000000")); // Полупрозрачный черный
+        rootLayout.setAlpha(0f);
+
+        com.google.android.material.card.MaterialCardView cardView = new com.google.android.material.card.MaterialCardView(this);
+        cardView.setCardBackgroundColor(android.graphics.Color.parseColor("#0D1117")); // GitHub Dark theme color
+        cardView.setRadius(48f);
+        cardView.setCardElevation(24f);
+        cardView.setStrokeColor(android.graphics.Color.parseColor("#30363D"));
+        cardView.setStrokeWidth(3);
+
+        android.widget.FrameLayout.LayoutParams cardParams = new android.widget.FrameLayout.LayoutParams(
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.92),
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        cardParams.gravity = android.view.Gravity.CENTER;
+        cardView.setLayoutParams(cardParams);
+
+        android.widget.LinearLayout cardContent = new android.widget.LinearLayout(this);
+        cardContent.setOrientation(android.widget.LinearLayout.VERTICAL);
+        cardContent.setPadding(48, 64, 48, 64);
+
+        // ЗАГОЛОВОК
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("SYS // NETWORK_TELEMETRY");
+        title.setTextSize(16f);
+        title.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+        title.setTextColor(android.graphics.Color.parseColor("#58A6FF")); // Мягкий синий
+        title.setGravity(android.view.Gravity.CENTER);
+        title.setPadding(0, 0, 0, 32);
+        cardContent.addView(title);
+
+        // ЖИВАЯ СКОРОСТЬ
+        android.widget.TextView tvSpeed = new android.widget.TextView(this);
+        tvSpeed.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+        tvSpeed.setTextSize(18f);
+        tvSpeed.setGravity(android.view.Gravity.CENTER);
+        tvSpeed.setPadding(0, 0, 0, 24);
+        cardContent.addView(tvSpeed);
+
+        // КАСТОМНЫЙ ГРАФИК
+        View graphView = new View(this) {
+            private final android.graphics.Paint paintRx = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            private final android.graphics.Paint paintTx = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            private final android.graphics.Paint paintGrid = new android.graphics.Paint();
+            private final android.graphics.Path pathRx = new android.graphics.Path();
+            private final android.graphics.Path pathTx = new android.graphics.Path();
+
+            public final java.util.LinkedList<Float> rxData = new java.util.LinkedList<>();
+            public final java.util.LinkedList<Float> txData = new java.util.LinkedList<>();
+            private final int MAX_POINTS = 50;
+            public float maxSpeed = 100f;
+
+            {
+                paintRx.setColor(android.graphics.Color.parseColor("#39FF14")); // Неоновый зеленый (Download)
+                paintRx.setStyle(android.graphics.Paint.Style.STROKE);
+                paintRx.setStrokeWidth(5f);
+                paintRx.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+
+                paintTx.setColor(android.graphics.Color.parseColor("#FF007F")); // Неоновый розовый (Upload)
+                paintTx.setStyle(android.graphics.Paint.Style.STROKE);
+                paintTx.setStrokeWidth(5f);
+                paintTx.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+
+                paintGrid.setColor(android.graphics.Color.parseColor("#1AFFFFFF"));
+                paintGrid.setStyle(android.graphics.Paint.Style.STROKE);
+                paintGrid.setStrokeWidth(2f);
+
+                // Инициализация нулями
+                for (int i = 0; i < MAX_POINTS; i++) { rxData.add(0f); txData.add(0f); }
+            }
+
+            @Override
+            protected void onDraw(android.graphics.Canvas canvas) {
+                super.onDraw(canvas);
+                int w = getWidth(); int h = getHeight();
+
+                // Рисуем хакерскую сетку
+                for (int i = 0; i <= 4; i++) {
+                    float y = h * (i / 4f);
+                    canvas.drawLine(0, y, w, y, paintGrid);
+                }
+                for (int i = 0; i <= 6; i++) {
+                    float x = w * (i / 6f);
+                    canvas.drawLine(x, 0, x, h, paintGrid);
+                }
+
+                pathRx.reset(); pathTx.reset();
+                float dx = w / (float) (MAX_POINTS - 1);
+
+                for (int i = 0; i < MAX_POINTS; i++) {
+                    float x = i * dx;
+                    // Защита от деления на 0 и масштабирование
+                    float displayMax = Math.max(maxSpeed, 1024f);
+                    float yRx = h - (rxData.get(i) / displayMax) * (h * 0.9f);
+                    float yTx = h - (txData.get(i) / displayMax) * (h * 0.9f);
+
+                    // Ограничитель, чтобы не вылетало за границы
+                    yRx = Math.max(10, Math.min(yRx, h));
+                    yTx = Math.max(10, Math.min(yTx, h));
+
+                    if (i == 0) { pathRx.moveTo(x, yRx); pathTx.moveTo(x, yTx); }
+                    else { pathRx.lineTo(x, yRx); pathTx.lineTo(x, yTx); }
+                }
+                canvas.drawPath(pathRx, paintRx);
+                canvas.drawPath(pathTx, paintTx);
+            }
+        };
+        // График стал больше
+        graphView.setLayoutParams(new android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 350));
+        cardContent.addView(graphView);
+
+        // ДЕТАЛИЗАЦИЯ
+        android.widget.TextView tvDetails = new android.widget.TextView(this);
+        tvDetails.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tvDetails.setTextColor(android.graphics.Color.parseColor("#8B949E"));
+        tvDetails.setTextSize(13f);
+        tvDetails.setPadding(0, 32, 0, 0);
+        tvDetails.setLineSpacing(0f, 1.3f);
+        cardContent.addView(tvDetails);
+
+        cardView.addView(cardContent);
+        rootLayout.addView(cardView);
+        dialog.setContentView(rootLayout);
+
+        // Анимация появления
+        rootLayout.animate().alpha(1f).setDuration(200).start();
+        cardView.setScaleX(0.8f); cardView.setScaleY(0.8f);
+        cardView.animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
+
+        // ЛОГИКА СБОРА ДАННЫХ
+        int uid = android.os.Process.myUid();
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+        Runnable updateRunnable = new Runnable() {
+            // Берем ГЛОБАЛЬНЫЙ трафик телефона для живого графика
+            long lastTotalRxBytes = TrafficStats.getTotalRxBytes();
+            long lastTotalTxBytes = TrafficStats.getTotalTxBytes();
+            long lastTotalRxPkts = TrafficStats.getTotalRxPackets();
+            long lastTotalTxPkts = TrafficStats.getTotalTxPackets();
+            long lastTime = System.currentTimeMillis();
+
+            // Переменные для инерции (плавного затухания)
+            float smoothRx = 0f;
+            float smoothTx = 0f;
+
+            @Override
+            public void run() {
+                if (!dialog.isShowing()) return;
+
+                long now = System.currentTimeMillis();
+
+                // Проверка сети (Связь есть или нет?)
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo netInfo = cm != null ? cm.getActiveNetworkInfo() : null;
+                boolean isOnline = netInfo != null && netInfo.isConnected();
+
+                // Глобальные счетчики
+                long currentTotalRxBytes = TrafficStats.getTotalRxBytes();
+                long currentTotalTxBytes = TrafficStats.getTotalTxBytes();
+                long currentTotalRxPkts = TrafficStats.getTotalRxPackets();
+                long currentTotalTxPkts = TrafficStats.getTotalTxPackets();
+
+                // Локальные счетчики (только наше приложение)
+                long appRxBytes = TrafficStats.getUidRxBytes(uid);
+                long appTxBytes = TrafficStats.getUidTxBytes(uid);
+
+                float timeDiff = (now - lastTime) / 1000f;
+                float rawRxSpeed = 0, rawTxSpeed = 0;
+                float rxPps = 0, txPps = 0;
+
+                if (isOnline && timeDiff > 0) {
+                    rawRxSpeed = Math.max(0, (currentTotalRxBytes - lastTotalRxBytes) / timeDiff);
+                    rawTxSpeed = Math.max(0, (currentTotalTxBytes - lastTotalTxBytes) / timeDiff);
+                    rxPps = Math.max(0, (currentTotalRxPkts - lastTotalRxPkts) / timeDiff);
+                    txPps = Math.max(0, (currentTotalTxPkts - lastTotalTxPkts) / timeDiff);
+                }
+
+                // МАГИЯ ИНЕРЦИИ (Экспоненциальное сглаживание)
+                // Если скорость есть, применяем её. Если скорость упала до 0, плавно снижаем график (умножаем на 0.8)
+                if (rawRxSpeed > 0) smoothRx = (smoothRx * 0.5f) + (rawRxSpeed * 0.5f);
+                else smoothRx = smoothRx * 0.85f;
+
+                if (rawTxSpeed > 0) smoothTx = (smoothTx * 0.5f) + (rawTxSpeed * 0.5f);
+                else smoothTx = smoothTx * 0.85f;
+
+                // Если сети нет вообще — жестко обнуляем
+                if (!isOnline) { smoothRx = 0; smoothTx = 0; rxPps = 0; txPps = 0; }
+
+                // ОБНОВЛЕНИЕ ТЕКСТА
+                if (isOnline) {
+                    String speedText = String.format(java.util.Locale.US, "<font color='#39FF14'>↓ %s/s</font> | <font color='#FF007F'>↑ %s/s</font>",
+                            formatBytes(smoothRx), formatBytes(smoothTx));
+                    tvSpeed.setText(android.text.Html.fromHtml(speedText, android.text.Html.FROM_HTML_MODE_LEGACY));
+                } else {
+                    tvSpeed.setText(android.text.Html.fromHtml("<font color='#FF5252'>[ NETWORK OFFLINE ]</font>", android.text.Html.FROM_HTML_MODE_LEGACY));
+                }
+
+                // ОБНОВЛЯЕМ ДЕТАЛИЗАЦИЮ (Показываем Пакеты телефона и Трафик Приложения)
+                String details = String.format(java.util.Locale.US,
+                        "DEVICE PACKETS/s : ↓ %-5.0f | ↑ %.0f\n" +
+                                "APP TOTAL RX     : %s\n" +
+                                "APP TOTAL TX     : %s",
+                        rxPps, txPps, formatBytes(appRxBytes), formatBytes(appTxBytes));
+                tvDetails.setText(details);
+
+                // ОБНОВЛЯЕМ ГРАФИК
+                try {
+                    java.lang.reflect.Field rxDataField = graphView.getClass().getField("rxData");
+                    java.lang.reflect.Field txDataField = graphView.getClass().getField("txData");
+                    java.util.LinkedList<Float> rxList = (java.util.LinkedList<Float>) rxDataField.get(graphView);
+                    java.util.LinkedList<Float> txList = (java.util.LinkedList<Float>) txDataField.get(graphView);
+
+                    rxList.removeFirst(); rxList.add(smoothRx);
+                    txList.removeFirst(); txList.add(smoothTx);
+
+                    // Динамическое масштабирование (опираемся на сглаженные значения)
+                    float currentMax = 1024f; // Минимум 1 KB/s на шкале
+                    for (Float val : rxList) if (val > currentMax) currentMax = val;
+                    for (Float val : txList) if (val > currentMax) currentMax = val;
+
+                    graphView.getClass().getField("maxSpeed").set(graphView, currentMax);
+                    graphView.invalidate();
+                } catch (Exception e) { e.printStackTrace(); }
+
+                lastTotalRxBytes = currentTotalRxBytes; lastTotalTxBytes = currentTotalTxBytes;
+                lastTotalRxPkts = currentTotalRxPkts; lastTotalTxPkts = currentTotalTxPkts;
+                lastTime = now;
+
+                handler.postDelayed(this, 300); // Обновление стало быстрее (300мс) для красивой анимации
+            }
+
+            private String formatBytes(float bytes) {
+                if (bytes < 1024) return String.format(java.util.Locale.US, "%3.0f B ", bytes);
+                else if (bytes < 1024 * 1024) return String.format(java.util.Locale.US, "%5.1f KB", bytes / 1024f);
+                else return String.format(java.util.Locale.US, "%5.2f MB", bytes / (1024f * 1024f));
+            }
+        };
+        handler.post(updateRunnable);
+
+        // Закрытие
+        Runnable closeDialog = () -> {
+            rootLayout.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && activityRootView != null) {
+                    activityRootView.setRenderEffect(null);
+                }
+                dialog.dismiss();
+            }).start();
+        };
+
+        rootLayout.setOnClickListener(v -> closeDialog.run());
+        dialog.setOnCancelListener(d -> closeDialog.run());
+        dialog.show();
     }
 
     private void observeUnreadMessages() {
@@ -204,6 +498,38 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setupConnectionObserver() {
+        connectedRef = FirebaseDatabase.getInstance().getReference(".info/connected");
+
+        connectionListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                boolean connected = snapshot.getValue(Boolean.class) != null && snapshot.getValue(Boolean.class);
+
+                if (connected) {
+                    appTitle.setText("Соединение...");
+                    appTitle.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (!isDestroyed()) {
+                            appTitle.setText("MapMemories");
+                            appTitle.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+                        }
+                    }, 1200);
+
+                } else {
+                    appTitle.setText("Ожидание сети...");
+                    appTitle.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+
+        connectedRef.addValueEventListener(connectionListener);
+    }
+
     private void updateChatsTabBadge(int unreadCount) {
         // Вкладка "Чаты" имеет индекс 1 (так как 0 это "Лента")
         TabLayout.Tab chatTab = tabLayout.getTabAt(1);
@@ -212,13 +538,10 @@ public class MainActivity extends AppCompatActivity {
             if (unreadCount > 0) {
                 BadgeDrawable badge = chatTab.getOrCreateBadge();
                 badge.setNumber(unreadCount);
-                // Красим бейдж в акцентный цвет (возьмет @color/accent из твоих ресурсов)
                 badge.setBackgroundColor(ContextCompat.getColor(this, R.color.accent));
-                // Цвет текста внутри кружочка (сделаем белый или цвет фона для контраста)
                 badge.setBadgeTextColor(ContextCompat.getColor(this, R.color.primary));
                 badge.setVisible(true);
             } else {
-                // Если непрочитанных нет — удаляем кружочек
                 chatTab.removeBadge();
             }
         }
@@ -231,6 +554,14 @@ public class MainActivity extends AppCompatActivity {
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
             tab.setText(position == 0 ? "Лента" : "Чаты");
         }).attach();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (connectedRef != null && connectionListener != null) {
+            connectedRef.removeEventListener(connectionListener);
+        }
     }
 
     private void setupClickListeners() {

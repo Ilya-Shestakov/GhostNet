@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import com.example.mapmemories.systemHelpers.CryptoHelper;
 
 public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHolder> {
 
@@ -94,36 +95,45 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 });
 
         if (item.lastMessage != null) {
+            // 1. ЕДИНОРАЗОВО РАСШИФРОВЫВАЕМ ТЕКСТ
+            String decryptedText = CryptoHelper.decrypt(item.lastMessage.getText());
             String previewText = "";
+
+            // 2. ФОРМИРУЕМ БАЗОВОЕ ПРЕВЬЮ
             if ("image".equals(item.lastMessage.getType())) {
-                previewText = item.lastMessage.getText() != null && !item.lastMessage.getText().isEmpty() ? "📷 " + item.lastMessage.getText() : "📷 Фотография";
+                previewText = (decryptedText != null && !decryptedText.isEmpty()) ? "📷 " + decryptedText : "📷 Фотография";
             } else if ("post".equals(item.lastMessage.getType())) {
                 previewText = "🗺️ Пост";
+            } else if ("voice".equals(item.lastMessage.getType())) {
+                previewText = "🎤 Голосовое сообщение";
             } else {
-                previewText = item.lastMessage.getText();
+                previewText = decryptedText != null ? decryptedText : "";
             }
-            holder.previewText.setText(previewText);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            holder.timeText.setText(sdf.format(item.lastMessage.getTimestamp()));
-
+            // 3. ДОБАВЛЯЕМ ЛОГИКУ "СВОЕ/ЧУЖОЕ"
             if (item.lastMessage.getSenderId().equals(currentUserId)) {
+                // Если сообщение отправили МЫ -> добавляем приставку "Вы: "
+                previewText = "Вы: " + previewText;
+
                 holder.readStatus.setVisibility(View.VISIBLE);
                 holder.unreadBadge.setVisibility(View.GONE);
                 holder.previewText.setTypeface(null, Typeface.NORMAL);
                 holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
 
+                // Галочки прочтения
                 if (item.lastMessage.isRead()) {
                     holder.readStatus.setImageResource(R.drawable.ic_check_double);
                 } else {
                     holder.readStatus.setImageResource(R.drawable.ic_check_single);
                 }
             } else {
+                // Если сообщение от СОБЕСЕДНИКА
                 holder.readStatus.setVisibility(View.GONE);
+
                 if (item.unreadCount > 0) {
                     holder.unreadBadge.setVisibility(View.VISIBLE);
                     holder.unreadBadge.setText(String.valueOf(item.unreadCount));
-                    holder.previewText.setTypeface(null, Typeface.BOLD);
+                    holder.previewText.setTypeface(null, Typeface.BOLD); // Делаем жирным, если не прочитано
                     holder.previewText.setTextColor(context.getResources().getColor(R.color.text_primary));
                 } else {
                     holder.unreadBadge.setVisibility(View.GONE);
@@ -131,7 +141,16 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                     holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
                 }
             }
+
+            // Устанавливаем итоговый расшифрованный текст
+            holder.previewText.setText(previewText);
+
+            // Время сообщения
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            holder.timeText.setText(sdf.format(item.lastMessage.getTimestamp()));
+
         } else {
+            // Если чат абсолютно пуст
             holder.previewText.setText("Нет сообщений");
             holder.timeText.setText("");
             holder.readStatus.setVisibility(View.GONE);

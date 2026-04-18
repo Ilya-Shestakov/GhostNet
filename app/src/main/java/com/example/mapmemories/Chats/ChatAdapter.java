@@ -37,6 +37,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.example.mapmemories.Post.ViewPostDetailsActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.AudioPlayerManager;
+import com.example.mapmemories.systemHelpers.CryptoHelper;
 import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -256,10 +257,37 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             String replyText = message.getReplyText();
             if (replyText == null || replyText.isEmpty()) {
                 if ("voice".equals(message.getType())) replyText = "🎤 Голосовое сообщение";
+                else if ("file".equals(message.getType())) {
+                    holder.fileLayout.setVisibility(View.VISIBLE);
+
+                    // Дешифруем имя файла
+                    String fileName = CryptoHelper.decrypt(message.getText());
+                    holder.tvFileName.setText(fileName);
+
+                    if (isUploading) {
+                        holder.ivFileIcon.setImageResource(android.R.drawable.ic_menu_upload);
+                        holder.fileLayout.setOnClickListener(v -> actionListener.onCancelUpload(message.getMessageId()));
+                    } else {
+                        holder.ivFileIcon.setImageResource(R.drawable.ic_file); // Твоя иконка файла
+
+                        // Цвета текста в зависимости от того, чье это сообщение
+                        if (isMine) holder.tvFileName.setTextColor(Color.WHITE);
+                        else holder.tvFileName.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
+
+                        holder.fileLayout.setOnClickListener(v -> {
+                            if (isSelectionMode) {
+                                toggleSelection(message.getMessageId(), holder.getAdapterPosition());
+                            } else {
+                                // Скачиваем файл через системный менеджер
+                                downloadFile(message.getImageUrl(), fileName);
+                            }
+                        });
+                    }
+                }
                 else if ("image".equals(message.getType())) replyText = "📷 Фотография";
                 else replyText = "Вложение";
             }
-            holder.tvQuotedText.setText(replyText);
+            holder.tvQuotedText.setText(CryptoHelper.decrypt(replyText));
             holder.replyQuotedLayout.setOnClickListener(v -> { if (actionListener != null) actionListener.onQuoteClicked(message.getReplyMessageId()); });
         }
 
@@ -269,7 +297,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         if ("text".equals(message.getType())) {
             holder.tvTextMessage.setVisibility(View.VISIBLE);
-            holder.tvTextMessage.setText(message.getText());
+            holder.tvTextMessage.setText(CryptoHelper.decrypt(message.getText()));
         }
 
         else if ("image".equals(message.getType())) {
@@ -281,7 +309,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             }
             if (message.getText() != null && !message.getText().isEmpty()) {
                 holder.tvTextMessage.setVisibility(View.VISIBLE);
-                holder.tvTextMessage.setText(message.getText());
+                holder.tvTextMessage.setText(CryptoHelper.decrypt(message.getText()));
             }
 
             if (isUploading) {
@@ -405,6 +433,26 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         });
     }
 
+
+    private void downloadFile(String url, String fileName) {
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setTitle(fileName);
+            request.setDescription("Скачивание файла...");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            // Сохраняем в системную папку загрузок
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+
+            DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (manager != null) {
+                manager.enqueue(request);
+                Toast.makeText(context, "Скачивание началось...", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(context, "Ошибка при скачивании", Toast.LENGTH_SHORT).show();
+        }
+    }
+
 //    private void showImageDialog(String imageUrl) {
 //        Dialog dialog = new Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
 //        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -459,6 +507,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.itemView.setOnLongClickListener(null);
         holder.tvReactionBadge.setOnClickListener(null);
         holder.chatAttachedImage.setTag(null);
+        holder.fileLayout.setVisibility(View.GONE);
     }
 
     private String formatVoiceTime(int totalMs) {
@@ -617,6 +666,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         MaterialCardView imageContainer;
         FrameLayout uploadOverlay;
         ImageButton btnPlayPause;
+        LinearLayout fileLayout;
+        TextView tvFileName;
+        ImageView ivFileIcon;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -639,6 +691,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             voiceLayout = itemView.findViewById(R.id.voiceLayout);
             btnPlayPause = itemView.findViewById(R.id.btnPlayPause);
             tvVoiceDuration = itemView.findViewById(R.id.tvVoiceDuration);
+            fileLayout = itemView.findViewById(R.id.fileLayout);
+            tvFileName = itemView.findViewById(R.id.tvFileName);
+            ivFileIcon = itemView.findViewById(R.id.ivFileIcon);
         }
     }
     private static class PostCacheData {

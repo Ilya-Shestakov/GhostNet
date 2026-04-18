@@ -166,34 +166,29 @@ public class MessageListenerService extends Service {
                             .get();
                 }
             } catch (Exception e) {
-                e.printStackTrace(); // Если не скачалось, будет null, обработаем ниже
+                e.printStackTrace();
             }
 
-            // Формируем текст (если это картинка, пишем "Фотография")
-            String messageText = message.getText();
+            String messageText = CryptoHelper.decrypt(message.getText());
             if ("image".equals(message.getType())) {
                 messageText = "📷 Фотография";
             } else if ("post".equals(message.getType())) {
                 messageText = "🗺️ Пост";
             }
 
-            // Создаем объект "Человек" для красивого стиля чата
             Person.Builder personBuilder = new Person.Builder().setName(senderName);
             if (avatarBitmap != null) {
                 personBuilder.setIcon(IconCompat.createWithBitmap(avatarBitmap));
             }
             Person sender = personBuilder.build();
 
-            // Стиль сообщения
             NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(sender)
                     .addMessage(messageText, message.getTimestamp(), sender);
 
-            // Интент при клике (открыть чат с этим человеком)
             Intent intent = new Intent(this, ChatActivity.class);
             intent.putExtra("targetUserId", senderId);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-            // PendingIntent.FLAG_IMMUTABLE нужен для современных версий Android
             PendingIntent pendingIntent = PendingIntent.getActivity(this, senderId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
