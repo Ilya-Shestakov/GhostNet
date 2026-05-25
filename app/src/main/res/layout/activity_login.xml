@@ -11,7 +11,6 @@
         android:layout_height="wrap_content"
         android:padding="24dp">
 
-        <!-- Логотип -->
         <ImageView
             android:id="@+id/logoImageView"
             android:layout_width="80dp"
@@ -22,12 +21,11 @@
             app:layout_constraintTop_toTopOf="parent"
             android:layout_marginTop="40dp" />
 
-        <!-- Слоган -->
         <TextView
             android:id="@+id/sloganTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Твоя жизнь на карте"
+            android:text="Будь уверен за свою безопастность!"
             android:textColor="@color/white"
             android:textSize="18sp"
             android:textStyle="italic"
@@ -36,7 +34,6 @@
             app:layout_constraintTop_toBottomOf="@id/logoImageView"
             android:layout_marginTop="16dp" />
 
-        <!-- Email поле -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/emailInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -61,7 +58,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Пароль поле -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/passwordInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -87,7 +83,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Кнопка "Забыли пароль?" -->
         <TextView
             android:id="@+id/forgotPasswordTextView"
             android:layout_width="wrap_content"
@@ -99,7 +94,6 @@
             app:layout_constraintTop_toBottomOf="@id/passwordInputLayout"
             android:layout_marginTop="8dp" />
 
-        <!-- Кнопка входа -->
         <Button
             android:id="@+id/loginButton"
             android:layout_width="0dp"
@@ -114,7 +108,6 @@
             app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView"
             android:layout_marginTop="32dp" />
 
-        <!-- Ссылка на регистрацию -->
         <LinearLayout
             android:id="@+id/registerLayout"
             android:layout_width="wrap_content"
@@ -146,7 +139,6 @@
 
         </LinearLayout>
 
-        <!-- Overlay с ProgressBar -->
         <RelativeLayout
             android:id="@+id/overlay"
             android:layout_width="0dp"

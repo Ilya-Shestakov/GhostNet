@@ -13,7 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.badge.BadgeDrawable;
-import com.example.mapmemories.Chats.ChatMessage; // Убедись, что импорт правильный для твоего проекта
+import com.example.mapmemories.Chats.ChatMessage;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
@@ -110,11 +110,10 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // ИСПРАВЛЕНИЕ БАГА СО СТАТУС-БАРОМ
-        View rootLayout = findViewById(R.id.topHeader); // Указываем на верхний элемент
+        View rootLayout = findViewById(R.id.topHeader);
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(0, insets.top, 0, 0); // Добавляем отступ сверху равный высоте статус-бара
+            v.setPadding(0, insets.top, 0, 0);
             return WindowInsetsCompat.CONSUMED;
         });
 
@@ -147,18 +146,15 @@ public class MainActivity extends AppCompatActivity {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                // Разрешение уже есть
+
                 prefs.edit().putBoolean("notifications_enabled", true).apply();
                 startService(new Intent(this, MessageListenerService.class));
             } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
-                // Пользователь ранее отказал, но не нажал "Больше не спрашивать"
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             } else {
-                // Запрашиваем в первый раз
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             }
         } else {
-            // Для Android ниже 13 разрешение дается при установке
             prefs.edit().putBoolean("notifications_enabled", true).apply();
             startService(new Intent(this, MessageListenerService.class));
         }
@@ -199,11 +195,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         android.widget.FrameLayout rootLayout = new android.widget.FrameLayout(this);
-        rootLayout.setBackgroundColor(android.graphics.Color.parseColor("#B3000000")); // Полупрозрачный черный
+        rootLayout.setBackgroundColor(android.graphics.Color.parseColor("#B3000000"));
         rootLayout.setAlpha(0f);
 
         com.google.android.material.card.MaterialCardView cardView = new com.google.android.material.card.MaterialCardView(this);
-        cardView.setCardBackgroundColor(android.graphics.Color.parseColor("#0D1117")); // GitHub Dark theme color
+        cardView.setCardBackgroundColor(android.graphics.Color.parseColor("#0D1117"));
         cardView.setRadius(48f);
         cardView.setCardElevation(24f);
         cardView.setStrokeColor(android.graphics.Color.parseColor("#30363D"));
@@ -220,17 +216,15 @@ public class MainActivity extends AppCompatActivity {
         cardContent.setOrientation(android.widget.LinearLayout.VERTICAL);
         cardContent.setPadding(48, 64, 48, 64);
 
-        // ЗАГОЛОВОК
         android.widget.TextView title = new android.widget.TextView(this);
         title.setText("SYS // NETWORK_TELEMETRY");
         title.setTextSize(16f);
         title.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
-        title.setTextColor(android.graphics.Color.parseColor("#58A6FF")); // Мягкий синий
+        title.setTextColor(android.graphics.Color.parseColor("#58A6FF"));
         title.setGravity(android.view.Gravity.CENTER);
         title.setPadding(0, 0, 0, 32);
         cardContent.addView(title);
 
-        // ЖИВАЯ СКОРОСТЬ
         android.widget.TextView tvSpeed = new android.widget.TextView(this);
         tvSpeed.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
         tvSpeed.setTextSize(18f);
@@ -238,7 +232,6 @@ public class MainActivity extends AppCompatActivity {
         tvSpeed.setPadding(0, 0, 0, 24);
         cardContent.addView(tvSpeed);
 
-        // КАСТОМНЫЙ ГРАФИК
         View graphView = new View(this) {
             private final android.graphics.Paint paintRx = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
             private final android.graphics.Paint paintTx = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
@@ -252,12 +245,12 @@ public class MainActivity extends AppCompatActivity {
             public float maxSpeed = 100f;
 
             {
-                paintRx.setColor(android.graphics.Color.parseColor("#39FF14")); // Неоновый зеленый (Download)
+                paintRx.setColor(android.graphics.Color.parseColor("#39FF14"));
                 paintRx.setStyle(android.graphics.Paint.Style.STROKE);
                 paintRx.setStrokeWidth(5f);
                 paintRx.setStrokeJoin(android.graphics.Paint.Join.ROUND);
 
-                paintTx.setColor(android.graphics.Color.parseColor("#FF007F")); // Неоновый розовый (Upload)
+                paintTx.setColor(android.graphics.Color.parseColor("#FF007F"));
                 paintTx.setStyle(android.graphics.Paint.Style.STROKE);
                 paintTx.setStrokeWidth(5f);
                 paintTx.setStrokeJoin(android.graphics.Paint.Join.ROUND);
@@ -266,7 +259,6 @@ public class MainActivity extends AppCompatActivity {
                 paintGrid.setStyle(android.graphics.Paint.Style.STROKE);
                 paintGrid.setStrokeWidth(2f);
 
-                // Инициализация нулями
                 for (int i = 0; i < MAX_POINTS; i++) { rxData.add(0f); txData.add(0f); }
             }
 
@@ -275,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
                 super.onDraw(canvas);
                 int w = getWidth(); int h = getHeight();
 
-                // Рисуем хакерскую сетку
                 for (int i = 0; i <= 4; i++) {
                     float y = h * (i / 4f);
                     canvas.drawLine(0, y, w, y, paintGrid);
@@ -290,12 +281,10 @@ public class MainActivity extends AppCompatActivity {
 
                 for (int i = 0; i < MAX_POINTS; i++) {
                     float x = i * dx;
-                    // Защита от деления на 0 и масштабирование
                     float displayMax = Math.max(maxSpeed, 1024f);
                     float yRx = h - (rxData.get(i) / displayMax) * (h * 0.9f);
                     float yTx = h - (txData.get(i) / displayMax) * (h * 0.9f);
 
-                    // Ограничитель, чтобы не вылетало за границы
                     yRx = Math.max(10, Math.min(yRx, h));
                     yTx = Math.max(10, Math.min(yTx, h));
 
@@ -306,11 +295,9 @@ public class MainActivity extends AppCompatActivity {
                 canvas.drawPath(pathTx, paintTx);
             }
         };
-        // График стал больше
         graphView.setLayoutParams(new android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 350));
         cardContent.addView(graphView);
 
-        // ДЕТАЛИЗАЦИЯ
         android.widget.TextView tvDetails = new android.widget.TextView(this);
         tvDetails.setTypeface(android.graphics.Typeface.MONOSPACE);
         tvDetails.setTextColor(android.graphics.Color.parseColor("#8B949E"));
@@ -323,24 +310,20 @@ public class MainActivity extends AppCompatActivity {
         rootLayout.addView(cardView);
         dialog.setContentView(rootLayout);
 
-        // Анимация появления
         rootLayout.animate().alpha(1f).setDuration(200).start();
         cardView.setScaleX(0.8f); cardView.setScaleY(0.8f);
         cardView.animate().scaleX(1f).scaleY(1f).setDuration(300).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
 
-        // ЛОГИКА СБОРА ДАННЫХ
         int uid = android.os.Process.myUid();
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
         Runnable updateRunnable = new Runnable() {
-            // Берем ГЛОБАЛЬНЫЙ трафик телефона для живого графика
             long lastTotalRxBytes = TrafficStats.getTotalRxBytes();
             long lastTotalTxBytes = TrafficStats.getTotalTxBytes();
             long lastTotalRxPkts = TrafficStats.getTotalRxPackets();
             long lastTotalTxPkts = TrafficStats.getTotalTxPackets();
             long lastTime = System.currentTimeMillis();
 
-            // Переменные для инерции (плавного затухания)
             float smoothRx = 0f;
             float smoothTx = 0f;
 
@@ -350,18 +333,15 @@ public class MainActivity extends AppCompatActivity {
 
                 long now = System.currentTimeMillis();
 
-                // Проверка сети (Связь есть или нет?)
                 ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
                 NetworkInfo netInfo = cm != null ? cm.getActiveNetworkInfo() : null;
                 boolean isOnline = netInfo != null && netInfo.isConnected();
 
-                // Глобальные счетчики
                 long currentTotalRxBytes = TrafficStats.getTotalRxBytes();
                 long currentTotalTxBytes = TrafficStats.getTotalTxBytes();
                 long currentTotalRxPkts = TrafficStats.getTotalRxPackets();
                 long currentTotalTxPkts = TrafficStats.getTotalTxPackets();
 
-                // Локальные счетчики (только наше приложение)
                 long appRxBytes = TrafficStats.getUidRxBytes(uid);
                 long appTxBytes = TrafficStats.getUidTxBytes(uid);
 
@@ -376,18 +356,14 @@ public class MainActivity extends AppCompatActivity {
                     txPps = Math.max(0, (currentTotalTxPkts - lastTotalTxPkts) / timeDiff);
                 }
 
-                // МАГИЯ ИНЕРЦИИ (Экспоненциальное сглаживание)
-                // Если скорость есть, применяем её. Если скорость упала до 0, плавно снижаем график (умножаем на 0.8)
                 if (rawRxSpeed > 0) smoothRx = (smoothRx * 0.5f) + (rawRxSpeed * 0.5f);
                 else smoothRx = smoothRx * 0.85f;
 
                 if (rawTxSpeed > 0) smoothTx = (smoothTx * 0.5f) + (rawTxSpeed * 0.5f);
                 else smoothTx = smoothTx * 0.85f;
 
-                // Если сети нет вообще — жестко обнуляем
                 if (!isOnline) { smoothRx = 0; smoothTx = 0; rxPps = 0; txPps = 0; }
 
-                // ОБНОВЛЕНИЕ ТЕКСТА
                 if (isOnline) {
                     String speedText = String.format(java.util.Locale.US, "<font color='#39FF14'>↓ %s/s</font> | <font color='#FF007F'>↑ %s/s</font>",
                             formatBytes(smoothRx), formatBytes(smoothTx));
@@ -396,7 +372,6 @@ public class MainActivity extends AppCompatActivity {
                     tvSpeed.setText(android.text.Html.fromHtml("<font color='#FF5252'>[ NETWORK OFFLINE ]</font>", android.text.Html.FROM_HTML_MODE_LEGACY));
                 }
 
-                // ОБНОВЛЯЕМ ДЕТАЛИЗАЦИЮ (Показываем Пакеты телефона и Трафик Приложения)
                 String details = String.format(java.util.Locale.US,
                         "DEVICE PACKETS/s : ↓ %-5.0f | ↑ %.0f\n" +
                                 "APP TOTAL RX     : %s\n" +
@@ -404,7 +379,6 @@ public class MainActivity extends AppCompatActivity {
                         rxPps, txPps, formatBytes(appRxBytes), formatBytes(appTxBytes));
                 tvDetails.setText(details);
 
-                // ОБНОВЛЯЕМ ГРАФИК
                 try {
                     java.lang.reflect.Field rxDataField = graphView.getClass().getField("rxData");
                     java.lang.reflect.Field txDataField = graphView.getClass().getField("txData");
@@ -414,8 +388,7 @@ public class MainActivity extends AppCompatActivity {
                     rxList.removeFirst(); rxList.add(smoothRx);
                     txList.removeFirst(); txList.add(smoothTx);
 
-                    // Динамическое масштабирование (опираемся на сглаженные значения)
-                    float currentMax = 1024f; // Минимум 1 KB/s на шкале
+                    float currentMax = 1024f;
                     for (Float val : rxList) if (val > currentMax) currentMax = val;
                     for (Float val : txList) if (val > currentMax) currentMax = val;
 
@@ -427,7 +400,7 @@ public class MainActivity extends AppCompatActivity {
                 lastTotalRxPkts = currentTotalRxPkts; lastTotalTxPkts = currentTotalTxPkts;
                 lastTime = now;
 
-                handler.postDelayed(this, 300); // Обновление стало быстрее (300мс) для красивой анимации
+                handler.postDelayed(this, 300);
             }
 
             private String formatBytes(float bytes) {
@@ -438,7 +411,6 @@ public class MainActivity extends AppCompatActivity {
         };
         handler.post(updateRunnable);
 
-        // Закрытие
         Runnable closeDialog = () -> {
             rootLayout.animate().alpha(0f).setDuration(200).withEndAction(() -> {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && activityRootView != null) {
@@ -464,15 +436,12 @@ public class MainActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 int totalUnreadCount = 0;
 
-                // Проходимся по всем чатам
                 for (DataSnapshot chatSnap : snapshot.getChildren()) {
                     String chatId = chatSnap.getKey();
 
-                    // Если текущий пользователь есть в этом чате
                     if (chatId != null && chatId.contains(currentUserId)) {
                         DataSnapshot messagesSnap = chatSnap.child("messages");
 
-                        // Считаем непрочитанные сообщения
                         for (DataSnapshot msgSnap : messagesSnap.getChildren()) {
                             ChatMessage msg = msgSnap.getValue(ChatMessage.class);
                             if (msg != null &&
@@ -480,7 +449,6 @@ public class MainActivity extends AppCompatActivity {
                                     msg.getReceiverId().equals(currentUserId) &&
                                     !msg.isRead()) {
 
-                                // Проверка, не удалено ли сообщение (как у тебя в ChatListFragment)
                                 if (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId)) {
                                     totalUnreadCount++;
                                 }
@@ -489,7 +457,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                // Обновляем UI бейджа
                 updateChatsTabBadge(totalUnreadCount);
             }
 
@@ -512,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
 
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (!isDestroyed()) {
-                            appTitle.setText("MapMemories");
+                            appTitle.setText("GhostNet");
                             appTitle.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
                         }
                     }, 1200);
@@ -531,7 +498,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateChatsTabBadge(int unreadCount) {
-        // Вкладка "Чаты" имеет индекс 1 (так как 0 это "Лента")
         TabLayout.Tab chatTab = tabLayout.getTabAt(1);
 
         if (chatTab != null) {

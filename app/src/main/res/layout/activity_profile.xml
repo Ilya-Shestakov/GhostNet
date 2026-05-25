@@ -4,16 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/transparent"> <!-- Корень по-прежнему прозрачный -->
+    android:background="@android:color/transparent">
 
-    <!-- ВОТ НАШ НОВЫЙ СЛОЙ. Он всегда закрашен и именно он анимируется -->
     <FrameLayout
         android:id="@+id/mainContentLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/primary">
 
-        <!-- А вот Coordinator теперь без ID и без фона, просто делает свою работу со скроллом -->
         <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -41,7 +39,6 @@
                     android:paddingTop="?attr/actionBarSize"
                     android:paddingBottom="16dp">
 
-                    <!-- КАРТОЧКА: Аватар слева, Статистика справа -->
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -72,7 +69,6 @@
                                 app:layout_constraintEnd_toEndOf="@id/avatarCard"
                                 app:tint="@android:color/white" />
 
-                            <!-- Аватарка (Квадратная) -->
                             <com.google.android.material.card.MaterialCardView
                                 android:id="@+id/avatarCard"
                                 android:layout_width="140dp"
@@ -91,7 +87,6 @@
                             </com.google.android.material.card.MaterialCardView>
 
 
-                            <!-- СТАТИСТИКА -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -154,7 +149,6 @@
                         </androidx.constraintlayout.widget.ConstraintLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- БЛОК РЕДАКТИРОВАНИЯ (Имя, Почта, Телефон, О себе) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -162,7 +156,6 @@
                         android:layout_marginTop="20dp"
                         android:orientation="vertical">
 
-                        <!-- Имя -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -202,7 +195,6 @@
                                 app:tint="@color/text_secondary" />
                         </LinearLayout>
 
-                        <!-- Телефон -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -220,7 +212,6 @@
                             <ImageButton android:id="@+id/editPhoneButton" android:layout_width="32dp" android:layout_height="32dp" android:background="?attr/selectableItemBackgroundBorderless" android:padding="6dp" android:scaleType="fitCenter" android:src="@drawable/ic_edit" app:tint="@color/text_secondary" />
                         </LinearLayout>
 
-                        <!-- О себе -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -238,7 +229,6 @@
                             <ImageButton android:id="@+id/editAboutButton" android:layout_width="32dp" android:layout_height="32dp" android:background="?attr/selectableItemBackgroundBorderless" android:padding="6dp" android:scaleType="fitCenter" android:src="@drawable/ic_edit" app:tint="@color/text_secondary" />
                         </LinearLayout>
 
-                        <!-- Дата регистрации -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -278,7 +268,6 @@
             </com.google.android.material.appbar.CollapsingToolbarLayout>
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- ЛЕНТА -->
             <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/memoriesRecyclerView"
             android:layout_width="match_parent"
@@ -292,7 +281,6 @@
 
     </FrameLayout>
 
-    <!-- ОВЕРЛЕЙ УВЕЛИЧЕННОГО ФОТО (Снаружи блюра) -->
         <FrameLayout
         android:id="@+id/expandedContainer"
         android:layout_width="match_parent"
@@ -322,7 +310,6 @@
                 android:layout_height="match_parent" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- КНОПКИ ПОДЕЛИТЬСЯ, СКАЧАТЬ И УДАЛИТЬ -->
         <LinearLayout
             android:id="@+id/expandedActionsContainer"
             android:layout_width="wrap_content"

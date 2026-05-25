@@ -152,7 +152,7 @@ public class ChatActivity extends AppCompatActivity {
     private Map<String, java.util.concurrent.Future<?>> uploadTasks = new HashMap<>();
     private boolean isTargetUserHidden = false;
 
-    // ПЕРЕМЕННЫЕ ЗАПИСИ ГС
+    //ГС
     private ImageButton btnRecordVoice;
     private LinearLayout lockOverlay;
     private TextView tvRecordTime, tvSlideToCancel, btnCancelVoiceLock;
@@ -169,7 +169,7 @@ public class ChatActivity extends AppCompatActivity {
     private View globalPlayerContainer;
     private View gpExpandedControls;
     private ImageView gpIcon;
-    private TextView gpTitle, gpCurrentTime, gpTotalTime;
+    private TextView gpCurrentTime, gpTotalTime;
     private ImageButton gpClose, gpDownload;
     private android.widget.SeekBar gpSeekBar;
     private boolean isGlobalPlayerExpanded = false;
@@ -295,7 +295,6 @@ public class ChatActivity extends AppCompatActivity {
         globalPlayerContainer = findViewById(R.id.globalPlayerContainer);
         gpExpandedControls = findViewById(R.id.gpExpandedControls);
         gpIcon = findViewById(R.id.gpIcon);
-        gpTitle = findViewById(R.id.gpTitle);
         gpCurrentTime = findViewById(R.id.gpCurrentTime);
         gpTotalTime = findViewById(R.id.gpTotalTime);
         gpClose = findViewById(R.id.gpClose);
@@ -344,8 +343,7 @@ public class ChatActivity extends AppCompatActivity {
         chatAdapter = new ChatAdapter(this, messageList, createChatActionListener());
         chatRecyclerView.setAdapter(chatAdapter);
 
-        final boolean[] isAudioCompleting = {false};
-
+        // ПРОИГРЫВАТЕЛЬ ГС
         AudioPlayerManager.getInstance().setCallback(new AudioPlayerManager.PlayerCallback() {
             @Override
             public void onStateChanged(String messageId, boolean isPlaying) {
@@ -362,11 +360,8 @@ public class ChatActivity extends AppCompatActivity {
                 } else {
                     gpIcon.setImageResource(android.R.drawable.ic_media_play);
 
-                    // ПУЛЕНЕПРОБИВАЕМАЯ ПРОВЕРКА:
-                    // Если трек остановился, и МЫ НЕ ЖАЛИ ПАУЗУ РУКАМИ - значит трек завершился!
                     if (!isAudioManuallyPaused) {
                         boolean hasNext = playNextVoiceMessage(messageId);
-                        // Если следующего ГС нет - сворачиваем верхнее окно
                         if (!hasNext) {
                             closeGlobalPlayer();
                         }
@@ -397,8 +392,6 @@ public class ChatActivity extends AppCompatActivity {
         MessageSwipeController swipeController = new MessageSwipeController(this, position -> {
             ChatMessage message = messageList.get(position);
 
-            // Даем плашке 150 миллисекунд, чтобы плавно отпружинить на место,
-            // и только потом показываем панель ответа и поднимаем клавиатуру.
             new Handler(getMainLooper()).postDelayed(() -> {
                 setupReplyPreview(message, false);
             }, 150);
@@ -524,8 +517,11 @@ public class ChatActivity extends AppCompatActivity {
     private void uploadFileToCloudinaryAndSend(Uri fileUri, String fileName) {
         String tempMessageId = "temp_file_" + System.currentTimeMillis();
 
-        // Имя файла кладем в текст (шифруем!), а локальный URI в imageUrl для превью
-        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, fileUri.toString(), CryptoHelper.encrypt(fileName), System.currentTimeMillis(), "file");
+        ChatMessage tempMsg = new ChatMessage(
+                currentUserId, targetUserId,
+                fileUri.toString(), CryptoHelper.encrypt(fileName),
+                System.currentTimeMillis(),
+                "file");
         tempMsg.setMessageId(tempMessageId);
         attachReplyDataToMessage(tempMsg);
 
@@ -538,7 +534,7 @@ public class ChatActivity extends AppCompatActivity {
             try {
                 InputStream inputStream = getContentResolver().openInputStream(fileUri);
                 Map<String, Object> options = new HashMap<>();
-                options.put("resource_type", "auto"); // ВАЖНО: "auto" позволяет грузить PDF, ZIP, DOCX и т.д.
+                options.put("resource_type", "auto"); // auto позволяет грузить PDF, ZIP, DOCX и тд.
                 Map uploadResult = cloudinary.uploader().upload(inputStream, options);
                 String secureUrl = (String) uploadResult.get("secure_url");
 
@@ -568,23 +564,21 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void setupGlobalPlayer() {
-        // Анимация раскрытия/сжатия по клику на саму панель
         globalPlayerContainer.setOnClickListener(v -> {
-            // Вот она, магия перетекания! Одна строчка делает всю жидкую анимацию.
+
             android.transition.TransitionManager.beginDelayedTransition((ViewGroup) globalPlayerContainer.getParent(), new android.transition.AutoTransition().setDuration(250));
 
             isGlobalPlayerExpanded = !isGlobalPlayerExpanded;
             gpExpandedControls.setVisibility(isGlobalPlayerExpanded ? View.VISIBLE : View.GONE);
         });
 
-        // Кнопка Пауза/Плей в самом глобальном плеере
         gpIcon.setOnClickListener(v -> {
             if (AudioPlayerManager.getInstance().isPlaying()) {
-                isAudioManuallyPaused = true; // СТАВИМ ФЛАГ - ПАУЗА НАЖАТА РУКАМИ
+                isAudioManuallyPaused = true;
                 AudioPlayerManager.getInstance().pause();
                 gpIcon.setImageResource(android.R.drawable.ic_media_play);
             } else {
-                isAudioManuallyPaused = false; // СНИМАЕМ ФЛАГ
+                isAudioManuallyPaused = false;
                 String currentPlayingId = AudioPlayerManager.getInstance().getCurrentPlayingId();
                 if (currentPlayingId != null) {
                     for (ChatMessage msg : messageList) {
@@ -597,7 +591,6 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
-        // Закрытие панели
         gpClose.setOnClickListener(v -> {
             AudioPlayerManager.getInstance().stop();
             globalPlayerContainer.animate().translationY(-100f).alpha(0f).setDuration(200).withEndAction(() -> {
@@ -607,7 +600,6 @@ public class ChatActivity extends AppCompatActivity {
             }).start();
         });
 
-        // Перемотка
         gpSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) AudioPlayerManager.getInstance().seekTo(progress);
@@ -616,7 +608,6 @@ public class ChatActivity extends AppCompatActivity {
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        // Заглушка скачивания
         gpDownload.setOnClickListener(v -> Toast.makeText(this, "Скачивание аудио...", Toast.LENGTH_SHORT).show());
     }
 
@@ -705,7 +696,7 @@ public class ChatActivity extends AppCompatActivity {
         rootLayout.setAlpha(0f);
 
         MaterialCardView cardView = new MaterialCardView(this);
-        cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.primary)); // ИСПРАВЛЕНО
+        cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.primary));
         cardView.setRadius(48f);
         cardView.setCardElevation(20f);
         FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
@@ -897,7 +888,7 @@ public class ChatActivity extends AppCompatActivity {
             popupWindow.showAsDropDown(btnSelectionReact, -menuLayout.getMeasuredWidth() / 2, 20);
         });
 
-        btnSelectionForward.setOnClickListener(v -> { /* Твой диалог пересылки */ });
+        btnSelectionForward.setOnClickListener(v -> {});
     }
 
     private void showAttachmentMenuPopup(View anchorView) {
@@ -940,7 +931,7 @@ public class ChatActivity extends AppCompatActivity {
 
         btnFile.setOnClickListener(v -> {
             popupWindow.dismiss();
-            pickFileLauncher.launch("*/*"); // Выбор любого файла
+            pickFileLauncher.launch("*/*"); // ЛЮБОЙ ТИП ФАЙЛА
         });
 
         menuLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -956,7 +947,6 @@ public class ChatActivity extends AppCompatActivity {
         if (isGalleryOpen) return;
         isGalleryOpen = true;
 
-        // 1. Собираем все картинки из чата
         galleryImages.clear();
         int startIndex = 0;
         for (ChatMessage msg : messageList) {
@@ -968,7 +958,6 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
 
-        // 2. Настраиваем адаптер
         galleryAdapter = new GalleryAdapter(galleryImages);
         galleryViewPager.setAdapter(galleryAdapter);
         galleryViewPager.setCurrentItem(startIndex, false);
@@ -981,7 +970,6 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
-        // 3. Меню опций (3 точки)
         btnGalleryMenu.setOnClickListener(v -> showGalleryMenu(v, galleryImages.get(galleryViewPager.getCurrentItem())));
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -991,11 +979,10 @@ public class ChatActivity extends AppCompatActivity {
             findViewById(R.id.bottomInputContainer).setRenderEffect(blurEffect);
         }
 
-        // Сброс фона и тулбара (на случай если закрыли свайпом)
         galleryContainer.setBackgroundColor(Color.BLACK);
         findViewById(R.id.galleryToolbar).setAlpha(1f);
 
-        // Плавное появление
+
         galleryContainer.setAlpha(0f);
         galleryContainer.setVisibility(View.VISIBLE);
         galleryContainer.animate()
@@ -1007,7 +994,6 @@ public class ChatActivity extends AppCompatActivity {
     private void closeGallery() {
         if (!isGalleryOpen) return;
 
-        // Анимация исчезновения
         galleryContainer.animate()
                 .alpha(0f)
                 .setDuration(200)
@@ -1039,16 +1025,14 @@ public class ChatActivity extends AppCompatActivity {
         tvGalleryCounter.setText((position + 1) + " из " + galleryImages.size());
     }
 
-    // Меню фич для картинки
     private void showGalleryMenu(View anchor, ChatMessage currentMessage) {
         LinearLayout menuLayout = new LinearLayout(this);
         menuLayout.setOrientation(LinearLayout.VERTICAL);
         menuLayout.setPadding(0, 16, 0, 16);
         menuLayout.setBackgroundResource(R.drawable.bg_telegram_popup); // Ваш фон для меню
 
-        // Кнопка Скачать
         TextView btnDownload = createMenuTextView("💾 Сохранить в галерею");
-        // Кнопка Поделиться
+
         TextView btnShare = createMenuTextView("📤 Поделиться");
 
         menuLayout.addView(btnDownload);
@@ -1085,7 +1069,6 @@ public class ChatActivity extends AppCompatActivity {
         return textView;
     }
 
-    // Функция скачивания
     private void downloadImage(String imageUrl) {
         android.app.DownloadManager downloadManager = (android.app.DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         Uri uri = Uri.parse(imageUrl);
@@ -1096,7 +1079,6 @@ public class ChatActivity extends AppCompatActivity {
         Toast.makeText(this, "Скачивание началось...", Toast.LENGTH_SHORT).show();
     }
 
-    // Функция "Поделиться"
     private void shareImage(String imageUrl) {
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
@@ -1131,10 +1113,8 @@ public class ChatActivity extends AppCompatActivity {
                     .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .into(holder.photoView);
 
-            // Закрытие по одиночному тапу
             holder.photoView.setOnPhotoTapListener((view, x, y) -> closeGallery());
 
-            // --- ЛОГИКА СВАЙПА ВВЕРХ/ВНИЗ ДЛЯ ЗАКРЫТИЯ ---
             holder.photoView.setOnTouchListener(new View.OnTouchListener() {
                 private float startY;
                 private boolean isDragging = false;
@@ -1142,7 +1122,6 @@ public class ChatActivity extends AppCompatActivity {
 
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    // Если фото приближено (зум), не перехватываем свайпы
                     if (holder.photoView.getScale() > 1.0f) return false;
 
                     switch (event.getAction()) {
@@ -1154,21 +1133,18 @@ public class ChatActivity extends AppCompatActivity {
                         case MotionEvent.ACTION_MOVE:
                             float dy = event.getRawY() - startY;
 
-                            // Если потянули по вертикали сильнее, чем по горизонтали - начинаем драг
                             if (!isDragging && Math.abs(dy) > 30) {
                                 isDragging = true;
-                                galleryViewPager.setUserInputEnabled(false); // Отключаем листание ViewPager
+                                galleryViewPager.setUserInputEnabled(false);
                             }
 
                             if (isDragging) {
                                 holder.photoView.setTranslationY(dy);
 
-                                // Вычисляем прозрачность фона (от 1.0 до 0.0)
                                 float alpha = 1f - Math.min(Math.abs(dy) / (galleryContainer.getHeight() / 2f), 1f);
                                 galleryContainer.setBackgroundColor(Color.argb((int) (alpha * 255), 0, 0, 0));
-                                galleryToolbar.setAlpha(alpha); // Прячем тулбар
+                                galleryToolbar.setAlpha(alpha);
 
-                                // Слегка уменьшаем картинку при оттягивании (эффект Telegram)
                                 float scale = 1f - Math.min(Math.abs(dy) / (galleryContainer.getHeight() * 2f), 0.2f);
                                 holder.photoView.setScaleX(scale);
                                 holder.photoView.setScaleY(scale);
@@ -1182,11 +1158,9 @@ public class ChatActivity extends AppCompatActivity {
                             if (isDragging) {
                                 float finalDy = event.getRawY() - startY;
 
-                                // Если оттянули достаточно далеко - закрываем
                                 if (Math.abs(finalDy) > 250) {
                                     closeGallery();
                                 } else {
-                                    // Иначе возвращаем картинку на место (Snap back)
                                     holder.photoView.animate()
                                             .translationY(0f)
                                             .scaleX(1f)
@@ -1200,7 +1174,7 @@ public class ChatActivity extends AppCompatActivity {
                                 }
 
                                 isDragging = false;
-                                galleryViewPager.setUserInputEnabled(true); // Включаем листание обратно
+                                galleryViewPager.setUserInputEnabled(true);
                                 return true;
                             }
                             break;
@@ -1235,7 +1209,7 @@ public class ChatActivity extends AppCompatActivity {
         btnRecordVoice.setOnTouchListener(new View.OnTouchListener() {
             float startY, startX;
             boolean isCancelled = false;
-            boolean lockedInThisGesture = false; // Отличает свайп вверх от тапа по кнопке
+            boolean lockedInThisGesture = false;
             boolean directionDecided = false;
             boolean movingUp = false;
 
@@ -1244,7 +1218,6 @@ public class ChatActivity extends AppCompatActivity {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         if (isRecordingLocked) {
-                            // Кнопка зафиксирована. Мы просто тапнули на нее.
                             btnRecordVoice.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100).start();
                             return true;
                         }
@@ -1256,7 +1229,7 @@ public class ChatActivity extends AppCompatActivity {
 
                         startY = event.getRawY(); startX = event.getRawX();
                         isCancelled = false;
-                        lockedInThisGesture = false; // Сбрасываем флаг при новом старте
+                        lockedInThisGesture = false;
                         directionDecided = false;
                         movingUp = false;
 
@@ -1291,7 +1264,7 @@ public class ChatActivity extends AppCompatActivity {
                         if (directionDecided) {
                             if (movingUp) {
                                 if (dy > 150) {
-                                    lockedInThisGesture = true; // Мы залочили запись свайпом!
+                                    lockedInThisGesture = true;
                                     isRecordingLocked = true;
                                     VibratorHelper.vibrate(ChatActivity.this, 30);
 
@@ -1324,12 +1297,8 @@ public class ChatActivity extends AppCompatActivity {
                             btnRecordVoice.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
 
                             if (!lockedInThisGesture) {
-                                // Если это БЫЛ ТАП по уже залоченной кнопке - ОТПРАВЛЯЕМ
                                 stopRecordingAndSend();
                             } else {
-                                // ВОТ ОНО ИСПРАВЛЕНИЕ!
-                                // Мы только что отпустили палец после свайпа вверх.
-                                // Сбрасываем флаг, чтобы следующий тап сработал как отправка!
                                 lockedInThisGesture = false;
                             }
                             return true;
@@ -1408,13 +1377,11 @@ public class ChatActivity extends AppCompatActivity {
         timerHandler.removeCallbacks(updateTimerRunnable);
         redDot.clearAnimation();
 
-        // Возвращаем видимость контейнерам
         recordingContainer.setVisibility(View.GONE);
         textInputContainer.setVisibility(View.VISIBLE);
         lockOverlay.setVisibility(View.GONE);
         btnCancelVoiceLock.setVisibility(View.GONE);
 
-        // Возвращаем микрофон в исходный вид
         btnRecordVoice.animate().scaleX(1f).scaleY(1f).translationY(0).translationX(0).setDuration(200).start();
         btnRecordVoice.setImageResource(android.R.drawable.ic_btn_speak_now);
         btnRecordVoice.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#1A3390EC")));
@@ -1504,7 +1471,7 @@ public class ChatActivity extends AppCompatActivity {
         } else {
             btnAttach.setVisibility(View.VISIBLE);
             btnSend.setVisibility(View.GONE);
-            btnRecordVoice.setVisibility(View.VISIBLE); // Микрофон ВСЕГДА видим, если нет текста
+            btnRecordVoice.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1561,6 +1528,7 @@ public class ChatActivity extends AppCompatActivity {
             else if ("image".equals(replyingToMessage.getType())) replyTxt = "📷 Фотография";
             else if ("voice".equals(replyingToMessage.getType())) replyTxt = "🎤 Голосовое сообщение";
             else if ("post".equals(message.getType())) replyTxt = "🗺️ Воспоминание";
+            else if ("file".equals(message.getType())) replyTxt = "📁 Документ";
             message.setReplyText(replyTxt);
         }
     }
@@ -1580,7 +1548,6 @@ public class ChatActivity extends AppCompatActivity {
         String tempMessageId = "temp_" + System.currentTimeMillis();
 
         ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), CryptoHelper.encrypt(caption), System.currentTimeMillis(), "image");
-
         tempMsg.setMessageId(tempMessageId);
         attachReplyDataToMessage(tempMsg);
 
@@ -1589,11 +1556,16 @@ public class ChatActivity extends AppCompatActivity {
         chatAdapter.notifyItemInserted(messageList.size() - 1);
         chatRecyclerView.scrollToPosition(messageList.size() - 1);
 
-        java.util.concurrent.Future<?> uploadTask = Executors.newSingleThreadExecutor().submit(() -> {
+        Executors.newSingleThreadExecutor().submit(() -> {
             try {
                 InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                if (inputStream == null) {
+                    throw new Exception("Не удалось открыть файл по указанному Uri");
+                }
+
                 Map<String, Object> options = new HashMap<>();
-                options.put("resource_type", "image");
+                options.put("resource_type", "auto");
+
                 Map uploadResult = cloudinary.uploader().upload(inputStream, options);
                 String secureUrl = (String) uploadResult.get("secure_url");
 
@@ -1617,15 +1589,21 @@ public class ChatActivity extends AppCompatActivity {
                         }
                     }
                 });
+
             } catch (Exception e) {
+                android.util.Log.e("CLOUDINARY_ERROR", "Ошибка при загрузке: ", e);
+
+                String errorMessage = e.getMessage();
+
                 runOnUiThread(() -> {
                     uploadTasks.remove(tempMessageId);
                     removeTempMessageLocally(tempMessageId);
-                    Toast.makeText(ChatActivity.this, "Отправка фото прервана", Toast.LENGTH_SHORT).show();
+
+                    String userFriendlyError = "Ошибка: " + (errorMessage != null ? errorMessage : "Неизвестная ошибка");
+                    Toast.makeText(ChatActivity.this, userFriendlyError, Toast.LENGTH_LONG).show();
                 });
             }
         });
-        uploadTasks.put(tempMessageId, uploadTask);
     }
 
     private void removeTempMessageLocally(String tempId) {
@@ -1667,13 +1645,13 @@ public class ChatActivity extends AppCompatActivity {
                             chatRecyclerView.smoothScrollToPosition(finalI);
                             AudioPlayerManager.getInstance().play(nextId, nextUrl);
                         }, 500);
-                        return true; // Нашли и запустили!
+                        return true;
                     }
                     break;
                 }
             }
         }
-        return false; // Следующего ГС нет
+        return false;
     }
 
     private void scrollToAndHighlightMessage(String messageId) {
@@ -1812,7 +1790,10 @@ public class ChatActivity extends AppCompatActivity {
                                 ChatMessage msg = msgSnap.getValue(ChatMessage.class);
                                 if (msg != null) {
                                     pinnedMessageContainer.setVisibility(View.VISIBLE);
-                                    String text = "text".equals(msg.getType()) ? CryptoHelper.decrypt(msg.getText()) : ("image".equals(msg.getType()) ? "📷 Фотография" : ("voice".equals(msg.getType()) ? "🎤 Голосовое" : "🗺️ Воспоминание"));
+                                    String text = "text".equals(msg.getType()) ? CryptoHelper.decrypt(msg.getText()) :
+                                            ("image".equals(msg.getType()) ? "📷 Фотография" :
+                                                    ("voice".equals(msg.getType()) ? "🎤 Голосовое" :
+                                                            ("file".equals(msg.getType()) ? "📁 Документ" : "🗺️ Воспоминание")));
                                     tvPinnedText.setText(text);
                                     pinnedMessageContainer.setOnClickListener(v -> scrollToAndHighlightMessage(pinnedId));
                                 }
@@ -1841,7 +1822,6 @@ public class ChatActivity extends AppCompatActivity {
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (rootLayout == null) return super.dispatchTouchEvent(ev);
 
-        // Блокируем свайп закрытия, если включен режим выделения сообщений или открыта галерея
         if (chatAdapter != null && !chatAdapter.getSelectedMessageIds().isEmpty()) return super.dispatchTouchEvent(ev);
         if (isGalleryOpen) return super.dispatchTouchEvent(ev);
 
@@ -1850,7 +1830,6 @@ public class ChatActivity extends AppCompatActivity {
                 startX = ev.getRawX();
                 startY = ev.getRawY();
                 isSwipingToClose = false;
-                // Свайп работает от левого края (захватываем 15% ширины экрана)
                 canSwipeBack = startX < (screenWidth * 0.9f);
                 break;
 
@@ -1859,14 +1838,11 @@ public class ChatActivity extends AppCompatActivity {
                 float dx = ev.getRawX() - startX;
                 float dy = ev.getRawY() - startY;
 
-                // Чувствительность выше: реагируем быстрее, если движение горизонтальное
                 if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.2f) {
                     isSwipingToClose = true;
-                    // Прячем клавиатуру
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     if (imm != null && getCurrentFocus() != null) imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
 
-                    // Отменяем передачу касаний дочерним элементам
                     android.view.MotionEvent cancelEvent = android.view.MotionEvent.obtain(ev);
                     cancelEvent.setAction(android.view.MotionEvent.ACTION_CANCEL);
                     super.dispatchTouchEvent(cancelEvent);
@@ -1874,7 +1850,6 @@ public class ChatActivity extends AppCompatActivity {
                 }
 
                 if (isSwipingToClose) {
-                    // Коэффициент 1.2 делает так, что окно движется чуть быстрее пальца (эффект легкости)
                     rootLayout.setTranslationX(Math.max(0, dx * 1.2f));
                     return true;
                 }
@@ -1885,18 +1860,16 @@ public class ChatActivity extends AppCompatActivity {
                 if (isSwipingToClose) {
                     float dxUp = ev.getRawX() - startX;
 
-                    // ХВАТИТ ЛИШЬ 15% ЭКРАНА, ЧТОБЫ ЗАКРЫТЬ
                     if (dxUp > screenWidth * 0.15f) {
                         rootLayout.animate()
                                 .translationX(screenWidth)
-                                .setDuration(150) // АНИМАЦИЯ БЫСТРЕЕ (150мс вместо 200)
-                                .setInterpolator(new android.view.animation.AccelerateInterpolator()) // Плавное ускорение
+                                .setDuration(150)
+                                .setInterpolator(new android.view.animation.AccelerateInterpolator())
                                 .withEndAction(() -> {
                                     finish();
                                     overridePendingTransition(0, 0);
                                 }).start();
                     } else {
-                        // Возврат (Snap back)
                         rootLayout.animate()
                                 .translationX(0)
                                 .setDuration(150)
@@ -1913,19 +1886,16 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // 1. Если открыта галерея - закрываем её
         if (isGalleryOpen) {
             closeGallery();
             return;
         }
 
-        // 2. Если есть выделенные сообщения - снимаем выделение
         if (chatAdapter != null && !chatAdapter.getSelectedMessageIds().isEmpty()) {
             chatAdapter.clearSelection();
             return;
         }
 
-        // 3. Иначе стандартный выход
         getOnBackPressedDispatcher().onBackPressed();
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
@@ -1962,7 +1932,6 @@ public class ChatActivity extends AppCompatActivity {
         if (targetUserId != null) {
             NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
-                // Удаляем уведомление по тому же ID (hashCode), с которым мы его создавали
                 notificationManager.cancel(targetUserId.hashCode());
             }
         }

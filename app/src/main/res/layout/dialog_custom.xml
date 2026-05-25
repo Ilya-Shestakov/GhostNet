@@ -3,17 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"> <!-- Важно: тут match_parent -->
+    android:layout_height="match_parent">
 
-    <!-- 1. ФОН ДЛЯ РАЗМЫТИЯ -->
     <ImageView
         android:id="@+id/blurBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:background="#80000000" /> <!-- Затемнение, если блюр не прогрузится -->
+        android:background="#80000000" />
 
-    <!-- 2. ТВОЯ КАРТОЧКА (Всё как было у тебя) -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/dialogCard"
         android:layout_width="match_parent"
@@ -63,7 +61,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/dialogTitle" />
 
-        <!-- Контейнер для списка (Очередь загрузки) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerContent"
             android:layout_width="match_parent"

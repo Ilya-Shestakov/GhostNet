@@ -169,7 +169,6 @@ public class ViewPostDetailsActivity extends AppCompatActivity {
             ImageCarouselAdapter adapter = new ImageCarouselAdapter(this, urls, (pos, url) -> openFullScreenZoom(url));
             viewPagerMedia.setAdapter(adapter);
 
-            // ПРИМЕНЯЕМ АНИМАЦИЮ
             viewPagerMedia.setPageTransformer(new ZoomOutPageTransformer());
 
             if (urls.size() > 1) {

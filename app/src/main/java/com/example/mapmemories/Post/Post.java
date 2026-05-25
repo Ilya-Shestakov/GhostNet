@@ -10,8 +10,8 @@ public class Post {
     private String userId;
     private String title;
     private String description;
-    private String mediaUrl; // Оставляем для совместимости со старыми постами
-    private List<String> mediaUrls; // НОВОЕ: Список ссылок для карусели
+    private String mediaUrl;
+    private List<String> mediaUrls;
     private String mediaType;
     private double latitude;
     private double longitude;

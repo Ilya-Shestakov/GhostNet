@@ -10,8 +10,8 @@ import android.renderscript.ScriptIntrinsicBlur;
 import android.view.View;
 
 public class BlurBuilder {
-    private static final float BLUR_RADIUS = 20f; // Сила размытия
-    private static final float BITMAP_SCALE = 0.5f; // Качество (0.5 - норм баланс скорости и качества)
+    private static final float BLUR_RADIUS = 20f;
+    private static final float BITMAP_SCALE = 0.5f;
 
     public static Bitmap blur(View v) {
         return blur(v.getContext(), getScreenshot(v));

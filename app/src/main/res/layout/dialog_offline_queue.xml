@@ -5,15 +5,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- ФОН ДЛЯ РАЗМЫТИЯ (Во весь экран) -->
     <ImageView
         android:id="@+id/blurBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:background="#90000000" /> <!-- Полупрозрачный черный на случай сбоя размытия -->
+        android:background="#90000000" />
 
-    <!-- САМА КАРТОЧКА ДИАЛОГА -->
     <androidx.cardview.widget.CardView
         android:id="@+id/dialogCard"
         android:layout_width="match_parent"
@@ -35,7 +33,6 @@
             android:paddingTop="20dp"
             android:paddingBottom="16dp">
 
-            <!-- Заголовок -->
             <ImageView
                 android:id="@+id/dialogIcon"
                 android:layout_width="28dp"
@@ -75,7 +72,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/dialogTitle" />
 
-            <!-- СПИСОК -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerOffline"
                 android:layout_width="match_parent"
@@ -87,7 +83,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/dialogTitle" />
 
-            <!-- Кнопка Закрыть -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnClose"
                 android:layout_width="match_parent"

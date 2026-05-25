@@ -15,7 +15,6 @@
         android:layout_marginBottom="16dp"
         android:background="#33888888" />
 
-    <!-- Кнопка Закрепить / Открепить -->
     <LinearLayout
         android:id="@+id/btnPinChat"
         android:layout_width="match_parent"
@@ -36,7 +35,6 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- Кнопка Удалить -->
     <LinearLayout
         android:id="@+id/btnDeleteChat"
         android:layout_width="match_parent"

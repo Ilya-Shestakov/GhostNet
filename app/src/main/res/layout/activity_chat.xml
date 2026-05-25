@@ -74,7 +74,6 @@
                 </LinearLayout>
             </androidx.appcompat.widget.Toolbar>
 
-            <!-- ТУЛБАР ВЫДЕЛЕНИЯ -->
             <LinearLayout
                 android:id="@+id/selectionToolbar"
                 android:layout_width="match_parent"
@@ -201,7 +200,6 @@
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- ГЛОБАЛЬНЫЙ ПЛЕЕР (ДИНАМИЧЕСКИЙ ОСТРОВ) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/globalPlayerContainer"
         android:layout_width="match_parent"
@@ -220,7 +218,6 @@
             android:animateLayoutChanges="true"
             android:padding="12dp">
 
-            <!-- КОМПАКТНЫЙ ВИД (Виден всегда) -->
             <ImageView
                 android:id="@+id/gpIcon"
                 android:layout_width="36dp"
@@ -258,7 +255,6 @@
                 app:layout_constraintBottom_toBottomOf="@id/gpIcon"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
-            <!-- РАСШИРЕННЫЙ ВИД (Появляется при клике) -->
             <LinearLayout
                 android:id="@+id/gpExpandedControls"
                 android:layout_width="match_parent"
@@ -314,7 +310,7 @@
                         android:background="?attr/selectableItemBackgroundBorderless"
                         app:tint="@color/text_secondary"/>
 
-                    <!-- Место для кнопок 1.5x скорости в будущем -->
+
                 </LinearLayout>
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -330,7 +326,6 @@
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
         app:layout_constraintBottom_toTopOf="@id/bottomInputContainer"/>
 
-    <!-- ПУСТОЙ ЧАТ -->
     <LinearLayout
         android:id="@+id/emptyChatContainer"
         android:layout_width="wrap_content"
@@ -388,7 +383,6 @@
         app:layout_constraintBottom_toTopOf="@id/bottomInputContainer"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- НИЖНЯЯ ПАНЕЛЬ ВВОДА -->
     <LinearLayout
         android:id="@+id/bottomInputContainer"
         android:layout_width="match_parent"
@@ -400,7 +394,6 @@
         android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <!-- ПРЕВЬЮ ФОТО -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/imagePreviewContainer"
             android:layout_width="match_parent"
@@ -439,7 +432,6 @@
                 android:layout_marginTop="-4dp"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- ПРЕВЬЮ ОТВЕТА -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/replyPreviewContainer"
             android:layout_width="match_parent"
@@ -498,7 +490,6 @@
                 app:layout_constraintBottom_toBottomOf="parent"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- КОНТЕЙНЕРЫ ВВОДА (Текст и Запись ГС разделены!) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -509,13 +500,11 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <!-- ЛЕВАЯ ЧАСТЬ: Поле текста ИЛИ Панель записи (переключаются) -->
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1">
 
-                <!-- 1. ПАНЕЛЬ ВВОДА ТЕКСТА -->
                 <LinearLayout
                     android:id="@+id/textInputContainer"
                     android:layout_width="match_parent"
@@ -548,7 +537,6 @@
                         android:inputType="textMultiLine|textCapSentences"/>
                 </LinearLayout>
 
-                <!-- 2. ПАНЕЛЬ ЗАПИСИ ГС -->
                 <LinearLayout
                     android:id="@+id/recordingContainer"
                     android:layout_width="match_parent"
@@ -603,7 +591,6 @@
                 </LinearLayout>
             </FrameLayout>
 
-            <!-- ПРАВАЯ ЧАСТЬ: Кнопки (Всегда поверх, никогда не перекрываются!) -->
             <FrameLayout
                 android:layout_width="40dp"
                 android:layout_height="40dp"
@@ -632,7 +619,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ЗАМОК ФИКСАЦИИ (Вынесен отдельно, чтобы не перекрываться) -->
     <LinearLayout
         android:id="@+id/lockOverlay"
         android:layout_width="48dp"
@@ -669,13 +655,11 @@
         android:elevation="40dp"
         android:alpha="0">
 
-        <!-- Листалка фото -->
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/galleryViewPager"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- Верхний Тулбар галереи -->
         <LinearLayout
             android:id="@+id/galleryToolbar"
             android:layout_width="match_parent"

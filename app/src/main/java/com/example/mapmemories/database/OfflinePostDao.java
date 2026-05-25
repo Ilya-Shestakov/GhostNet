@@ -13,10 +13,10 @@ public interface OfflinePostDao {
     void insert(OfflinePost post);
 
     @Query("SELECT * FROM offline_posts")
-    List<OfflinePost> getAllPostsSync(); // Для WorkManager
+    List<OfflinePost> getAllPostsSync();
 
     @Query("SELECT * FROM offline_posts")
-    LiveData<List<OfflinePost>> getAllPostsLive(); // Для иконки в MainActivity
+    LiveData<List<OfflinePost>> getAllPostsLive();
 
     @Delete
     void delete(OfflinePost post);

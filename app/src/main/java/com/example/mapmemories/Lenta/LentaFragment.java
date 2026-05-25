@@ -64,7 +64,6 @@ public class LentaFragment extends Fragment {
         });
         memoriesRecyclerView.setAdapter(publicAdapter);
 
-        // ВОЗВРАЩАЕМ СКРЫТИЕ ПАНЕЛИ
         memoriesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {

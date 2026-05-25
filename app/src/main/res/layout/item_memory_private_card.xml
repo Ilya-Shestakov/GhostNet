@@ -14,7 +14,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Медиа (Фото/Видео) -->
         <ImageView
             android:id="@+id/postImage"
             android:layout_width="0dp"
@@ -25,7 +24,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Иконка Видео (поверх фото) -->
         <ImageView
             android:id="@+id/videoIcon"
             android:layout_width="32dp"
@@ -39,7 +37,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Инфо контейнер -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -72,7 +69,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/postTitle" />
 
-            <!-- ИКОНКА ПРИВАТНОСТИ (ВМЕСТО ЛАЙКОВ) -->
             <LinearLayout
                 android:id="@+id/privacyContainer"
                 android:layout_width="wrap_content"

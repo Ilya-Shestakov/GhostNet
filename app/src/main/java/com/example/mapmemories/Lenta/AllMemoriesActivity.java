@@ -48,7 +48,6 @@ public class AllMemoriesActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         postList = new ArrayList<>();
 
-        // Инициализируем адаптер с обработчиком клика
         adapter = new MemoriesAdapter(this, postList, post -> {
             Intent intent = new Intent(AllMemoriesActivity.this, PostDetailsActivity.class);
             intent.putExtra("postId", post.getId());
@@ -66,7 +65,6 @@ public class AllMemoriesActivity extends AppCompatActivity {
 
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("posts");
 
-        // Загружаем только посты текущего пользователя
         ref.orderByChild("userId").equalTo(uid).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -77,7 +75,7 @@ public class AllMemoriesActivity extends AppCompatActivity {
                         postList.add(post);
                     }
                 }
-                Collections.reverse(postList); // Новые сверху
+                Collections.reverse(postList);
                 adapter.notifyDataSetChanged();
                 progressBar.setVisibility(View.GONE);
             }

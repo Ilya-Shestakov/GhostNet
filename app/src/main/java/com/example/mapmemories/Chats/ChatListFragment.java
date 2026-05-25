@@ -59,7 +59,6 @@ public class ChatListFragment extends Fragment {
     private List<ChatListItem> filteredChatListItems = new ArrayList<>();
     private List<User> globalUserList = new ArrayList<>();
 
-    // Карта для мгновенного обновления закрепов
     private Map<String, Long> pinnedChatsMap = new HashMap<>();
 
     private DatabaseReference chatsRef, usersRef, myPinnedRef;
@@ -133,11 +132,9 @@ public class ChatListFragment extends Fragment {
         globalRecyclerView.setAdapter(globalUsersAdapter);
     }
 
-    // --- МЕНЮ ТЕЛЕГРАМ С ПЛАВНЫМ ПЕРЕМЕЩЕНИЕМ ---
     private void showContextMenu(ChatListItem item, View anchorView) {
         View popupView = LayoutInflater.from(getContext()).inflate(R.layout.popup_chat_options, null);
 
-        // Ставим focusable=false, чтобы не прерывать перетаскивание списка при долгом нажатии
         PopupWindow popupWindow = new PopupWindow(
                 popupView,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -175,7 +172,6 @@ public class ChatListFragment extends Fragment {
 
         popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, location[0] + xOffset, location[1] + (anchorView.getHeight() / 2));
 
-        // Логика следования за элементом (когда скроллим или перетаскиваем элемент)
         ViewTreeObserver.OnPreDrawListener preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
@@ -195,22 +191,20 @@ public class ChatListFragment extends Fragment {
         });
     }
 
-    // --- ПЛАВНЫЙ DRAG AND DROP ---
     private void setupDragAndDrop() {
         ItemTouchHelper.SimpleCallback touchHelperCallback = new ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
 
-            // Отключаем возможность перетаскивания для НЕзакрепленных чатов
             @Override
             public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
                 int position = viewHolder.getAdapterPosition();
                 List<ChatListItem> currentList = chatListAdapter.getItems();
                 if (position >= 0 && position < currentList.size()) {
                     if (!currentList.get(position).isPinned) {
-                        return makeMovementFlags(0, 0); // Перетаскивание запрещено
+                        return makeMovementFlags(0, 0);
                     }
                 }
-                return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0); // Разрешено
+                return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
             }
 
             @Override
@@ -270,7 +264,6 @@ public class ChatListFragment extends Fragment {
         }
     }
 
-    // --- ЗАГРУЗКА ДАННЫХ ---
     private void loadLocalChatsData() {
         myPinnedRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -364,7 +357,6 @@ public class ChatListFragment extends Fragment {
         else updateLocalFilter(searchInput.getText().toString());
     }
 
-    // --- ПОИСК И СОРТИРОВКА ---
     private void setupSearch() {
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}

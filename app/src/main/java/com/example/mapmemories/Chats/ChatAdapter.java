@@ -72,7 +72,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     private Set<String> uploadingMessageIds = new HashSet<>();
     private boolean isSelectionMode = false;
 
-    // Кэш для запоминания длительности голосовых сообщений
     private Map<String, Integer> voiceDurations = new HashMap<>();
 
     public interface ChatActionListener {
@@ -181,7 +180,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 } else if (payload instanceof AudioProgress) {
                     AudioProgress p = (AudioProgress) payload;
 
-                    // ИСПРАВЛЕНИЕ: Запоминаем максимальную длительность ГС в кэш
                     voiceDurations.put(message.getMessageId(), p.max);
                     holder.tvVoiceDuration.setText(formatVoiceTime(p.max));
                 }
@@ -199,7 +197,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
 
-        // 1. ВЫДЕЛЕНИЕ
         if (isSelected) {
             holder.itemView.setBackgroundColor(Color.parseColor("#1AE27950"));
             holder.contentLayout.setScaleX(0.92f); holder.contentLayout.setScaleY(0.92f); holder.contentLayout.setAlpha(0.8f);
@@ -208,7 +205,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.contentLayout.setScaleX(1f); holder.contentLayout.setScaleY(1f); holder.contentLayout.setAlpha(1f);
         }
 
-        // 2. СВОЕ / ЧУЖОЕ
         if (isMine) {
             params.horizontalBias = 1.0f;
             holder.contentLayout.setBackgroundResource(R.drawable.bg_msg_mine);
@@ -249,43 +245,21 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.highlightOverlay.startAnimation(fadeIn);
         }
 
-        // 3. ЦИТАТА
         if (message.getReplyMessageId() != null && !message.getReplyMessageId().isEmpty()) {
             holder.replyQuotedLayout.setVisibility(View.VISIBLE);
             holder.tvQuotedSender.setText(message.getReplySenderId().equals(currentUserId) ? "Вы" : targetUserName);
 
             String replyText = message.getReplyText();
             if (replyText == null || replyText.isEmpty()) {
+
                 if ("voice".equals(message.getType())) replyText = "🎤 Голосовое сообщение";
-                else if ("file".equals(message.getType())) {
-                    holder.fileLayout.setVisibility(View.VISIBLE);
 
-                    // Дешифруем имя файла
-                    String fileName = CryptoHelper.decrypt(message.getText());
-                    holder.tvFileName.setText(fileName);
+                else if ("file".equals(message.getType())) replyText = "📁 Документ";
 
-                    if (isUploading) {
-                        holder.ivFileIcon.setImageResource(android.R.drawable.ic_menu_upload);
-                        holder.fileLayout.setOnClickListener(v -> actionListener.onCancelUpload(message.getMessageId()));
-                    } else {
-                        holder.ivFileIcon.setImageResource(R.drawable.ic_file); // Твоя иконка файла
-
-                        // Цвета текста в зависимости от того, чье это сообщение
-                        if (isMine) holder.tvFileName.setTextColor(Color.WHITE);
-                        else holder.tvFileName.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
-
-                        holder.fileLayout.setOnClickListener(v -> {
-                            if (isSelectionMode) {
-                                toggleSelection(message.getMessageId(), holder.getAdapterPosition());
-                            } else {
-                                // Скачиваем файл через системный менеджер
-                                downloadFile(message.getImageUrl(), fileName);
-                            }
-                        });
-                    }
-                }
                 else if ("image".equals(message.getType())) replyText = "📷 Фотография";
+
                 else replyText = "Вложение";
+
             }
             holder.tvQuotedText.setText(CryptoHelper.decrypt(replyText));
             holder.replyQuotedLayout.setOnClickListener(v -> { if (actionListener != null) actionListener.onQuoteClicked(message.getReplyMessageId()); });
@@ -298,9 +272,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         if ("text".equals(message.getType())) {
             holder.tvTextMessage.setVisibility(View.VISIBLE);
             holder.tvTextMessage.setText(CryptoHelper.decrypt(message.getText()));
-        }
-
-        else if ("image".equals(message.getType())) {
+        } else if ("image".equals(message.getType())) {
             holder.imageContainer.setVisibility(View.VISIBLE);
             String currentUrl = (String) holder.chatAttachedImage.getTag();
             if (currentUrl == null || !currentUrl.equals(message.getImageUrl())) {
@@ -320,15 +292,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                     if (isSelectionMode) {
                         toggleSelection(message.getMessageId(), holder.getAdapterPosition());
                     } else {
-                        // Передаем саму картинку (для анимации) и сообщение
                         actionListener.onImageClicked(holder.chatAttachedImage, message);
                     }
                 });
             }
-        }
-
-
-        else if ("post".equals(message.getType())) {
+        } else if ("post".equals(message.getType())) {
             holder.postLayout.setVisibility(View.VISIBLE);
             loadPostDataOptimized(message.getPostId(), holder);
             holder.postLayout.setOnClickListener(v -> {
@@ -339,6 +307,29 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                     context.startActivity(intent);
                 }
             });
+        } else if ("file".equals(message.getType())) {
+            holder.fileLayout.setVisibility(View.VISIBLE);
+
+            String fileName = CryptoHelper.decrypt(message.getText());
+            holder.tvFileName.setText(fileName);
+
+            if (isUploading) {
+                holder.ivFileIcon.setImageResource(android.R.drawable.ic_menu_upload);
+                holder.fileLayout.setOnClickListener(v -> actionListener.onCancelUpload(message.getMessageId()));
+            } else {
+                holder.ivFileIcon.setImageResource(R.drawable.ic_file);
+
+                if (isMine) holder.tvFileName.setTextColor(Color.WHITE);
+                else holder.tvFileName.setTextColor(ContextCompat.getColor(context, R.color.chat_other_text));
+
+                holder.fileLayout.setOnClickListener(v -> {
+                    if (isSelectionMode) {
+                        toggleSelection(message.getMessageId(), holder.getAdapterPosition());
+                    } else {
+                        downloadFile(message.getImageUrl(), fileName);
+                    }
+                });
+            }
         } else if ("voice".equals(message.getType())) {
             holder.voiceLayout.setVisibility(View.VISIBLE);
 
@@ -361,12 +352,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
                 holder.btnPlayPause.setImageResource(isThisPlaying && AudioPlayerManager.getInstance().isPlaying() ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
 
-                // ИСПРАВЛЕНИЕ: Проверяем, знаем ли мы уже время этого ГС из кэша
                 if (voiceDurations.containsKey(message.getMessageId())) {
-                    // Если знаем - пишем красивое время (например 0:15)
                     holder.tvVoiceDuration.setText(formatVoiceTime(voiceDurations.get(message.getMessageId())));
                 } else {
-                    // Если еще ни разу не нажимали Play - пишем Аудио
                     holder.tvVoiceDuration.setText("▶ Аудио");
                 }
 
@@ -376,7 +364,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                         return;
                     }
 
-                    // Сообщаем ChatActivity, ставим мы на паузу или включаем
                     if (context instanceof ChatActivity) {
                         ((ChatActivity) context).isAudioManuallyPaused = AudioPlayerManager.getInstance().isPlaying();
                     }
@@ -403,12 +390,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
 
 
-        // РЕАКЦИИ
         if (message.getReaction() != null && !message.getReaction().isEmpty()) {
             holder.tvReactionBadge.setVisibility(View.VISIBLE);
             holder.tvReactionBadge.setText(message.getReaction());
 
-            // Удаление реакции по клику на нее
             holder.tvReactionBadge.setOnClickListener(v -> {
                 if (actionListener != null) actionListener.onReactionSelected(message, null);
             });
@@ -440,7 +425,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             request.setTitle(fileName);
             request.setDescription("Скачивание файла...");
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            // Сохраняем в системную папку загрузок
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
 
             DownloadManager manager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
@@ -452,48 +436,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             Toast.makeText(context, "Ошибка при скачивании", Toast.LENGTH_SHORT).show();
         }
     }
-
-//    private void showImageDialog(String imageUrl) {
-//        Dialog dialog = new Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-//        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-//        dialog.setContentView(R.layout.dialog_view_avatar); // Создадим ниже программно или используй свой
-//        dialog.setContentView(R.layout.dialog_view_avatar);
-//
-//        ImageView fullImage = new ImageView(context);
-//        fullImage.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-//        fullImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-//        Glide.with(context).load(imageUrl).into(fullImage);
-//
-//        ImageButton btnDownload = new ImageButton(context);
-//        btnDownload.setImageResource(android.R.drawable.ic_menu_save);
-//        btnDownload.setBackgroundColor(Color.TRANSPARENT);
-//        btnDownload.setPadding(32, 32, 32, 32);
-//
-//        ConstraintLayout layout = new ConstraintLayout(context);
-//        layout.addView(fullImage);
-//        layout.addView(btnDownload);
-//
-//        ConstraintLayout.LayoutParams btnParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-//        btnParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
-//        btnParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-//        btnParams.setMargins(0, 0, 32, 32);
-//        btnDownload.setLayoutParams(btnParams);
-//
-//        dialog.setContentView(layout);
-//
-//        btnDownload.setOnClickListener(v -> {
-//            DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-//            Uri uri = Uri.parse(imageUrl);
-//            DownloadManager.Request request = new DownloadManager.Request(uri);
-//            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-//            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_PICTURES, "MapMemories_" + System.currentTimeMillis() + ".jpg");
-//            downloadManager.enqueue(request);
-//            Toast.makeText(context, "Скачивание началось", Toast.LENGTH_SHORT).show();
-//            dialog.dismiss();
-//        });
-//
-//        dialog.show();
-//    }
 
     private void resetViewHolders(ViewHolder holder) {
         holder.tvTextMessage.setVisibility(View.GONE);

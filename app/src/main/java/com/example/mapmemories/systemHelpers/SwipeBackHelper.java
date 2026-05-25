@@ -38,7 +38,6 @@ public class SwipeBackHelper {
                 downX = event.getRawX();
                 downY = event.getRawY();
                 isSwiping = false;
-                // Свайп работает только если начать тянуть от левого края (первые 150px)
                 canSwipe = downX < 150;
                 break;
 
@@ -47,10 +46,8 @@ public class SwipeBackHelper {
                     float deltaX = event.getRawX() - downX;
                     float deltaY = Math.abs(event.getRawY() - downY);
 
-                    // Если тянем вправо сильнее, чем вверх/вниз -> это свайп назад
                     if (!isSwiping && deltaX > touchSlop && deltaX > deltaY) {
                         isSwiping = true;
-                        // Отменяем клики по кнопкам под пальцем, чтобы они не нажались
                         MotionEvent cancelEvent = MotionEvent.obtain(event);
                         cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
                         superCaller.callSuper(cancelEvent);
@@ -58,9 +55,8 @@ public class SwipeBackHelper {
                     }
 
                     if (isSwiping) {
-                        // Двигаем весь экран вправо
                         decorView.setTranslationX(deltaX);
-                        return true; // Перехватываем событие
+                        return true;
                     }
                 }
                 break;
@@ -69,7 +65,6 @@ public class SwipeBackHelper {
             case MotionEvent.ACTION_CANCEL:
                 if (isSwiping) {
                     float deltaX = event.getRawX() - downX;
-                    // Если свайпнули больше чем на 30% экрана -> закрываем активити
                     if (deltaX > screenWidth / 3f) {
                         decorView.animate()
                                 .translationX(screenWidth)
@@ -80,7 +75,7 @@ public class SwipeBackHelper {
                                 })
                                 .start();
                     } else {
-                        // Иначе возвращаем экран на место
+
                         decorView.animate()
                                 .translationX(0)
                                 .setDuration(200)

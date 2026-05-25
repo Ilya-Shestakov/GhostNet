@@ -10,7 +10,6 @@
     android:fitsSystemWindows="true"
     >
 
-    <!-- МИНИМАЛИСТИЧНЫЙ HEADER -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerLayout"
         android:layout_width="match_parent"
@@ -69,7 +68,6 @@
             android:orientation="vertical"
             android:paddingBottom="40dp">
 
-            <!-- ЗОНА ФОТО (Крупная, без лишних рамок) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnAddMedia"
                 android:layout_width="match_parent"
@@ -88,7 +86,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
 
-                    <!-- Плейсхолдер (когда нет фото) -->
                     <LinearLayout
                         android:id="@+id/layoutAddMediaPlaceholder"
                         android:layout_width="wrap_content"
@@ -121,14 +118,12 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <!-- Карусель -->
                     <androidx.viewpager2.widget.ViewPager2
                         android:id="@+id/viewPagerMedia"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:visibility="gone" />
 
-                    <!-- Точки -->
                     <com.google.android.material.tabs.TabLayout
                         android:id="@+id/tabLayoutDots"
                         android:layout_width="match_parent"
@@ -141,7 +136,6 @@
                         android:layout_marginBottom="8dp"
                         android:visibility="gone"/>
 
-                    <!-- Панель управления фото (появляется после выбора) -->
                     <LinearLayout
                         android:id="@+id/layoutMediaControls"
                         android:layout_width="wrap_content"
@@ -176,7 +170,6 @@
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ЧИСТЫЕ ПОЛЯ ВВОДА (Без рамок) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -224,14 +217,12 @@
                 android:background="@color/secondary"
                 android:layout_marginVertical="16dp"/>
 
-            <!-- НАСТРОЙКИ (Локация и Приватность) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="20dp">
 
-                <!-- Локация -->
                 <LinearLayout
                     android:id="@+id/btnSelectLocation"
                     android:layout_width="match_parent"
@@ -272,7 +263,6 @@
                     android:background="#1A000000"
                     android:layout_marginStart="40dp"/>
 
-                <!-- Приватность (Теперь со свитчом) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

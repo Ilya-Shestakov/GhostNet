@@ -18,7 +18,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/divider">
 
-        <!-- Аватарка -->
         <ImageView
             android:id="@+id/chatAvatar"
             android:layout_width="54dp"
@@ -29,7 +28,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Индикатор онлайна -->
         <View
             android:id="@+id/onlineIndicator"
             android:layout_width="14dp"
@@ -41,7 +39,6 @@
             android:translationX="1dp"
             android:translationY="1dp" />
 
-        <!-- Имя пользователя -->
         <TextView
             android:id="@+id/chatUsername"
             android:layout_width="0dp"
@@ -59,7 +56,6 @@
             app:layout_constraintBottom_toTopOf="@id/chatPreviewText"
             app:layout_constraintVertical_chainStyle="packed"/>
 
-        <!-- Галочки прочитанности (только для исходящих) -->
         <ImageView
             android:id="@+id/ivReadStatus"
             android:layout_width="16dp"
@@ -71,7 +67,6 @@
             app:layout_constraintTop_toTopOf="@id/chatPreviewText"
             app:layout_constraintBottom_toBottomOf="@id/chatPreviewText" />
 
-        <!-- Текст превью (последнее сообщение) -->
         <TextView
             android:id="@+id/chatPreviewText"
             android:layout_width="0dp"
@@ -89,7 +84,6 @@
             app:layout_constraintHorizontal_bias="0.0"
             tools:text="Последнее сообщение тут..."/>
 
-        <!-- Время последнего сообщения -->
         <TextView
             android:id="@+id/timeText"
             android:layout_width="wrap_content"
@@ -101,7 +95,6 @@
             app:layout_constraintBottom_toBottomOf="@id/chatUsername"
             tools:text="14:20"/>
 
-        <!-- Иконка закрепа -->
         <ImageView
             android:id="@+id/ivPinnedIcon"
             android:layout_width="16dp"
@@ -114,7 +107,6 @@
             app:layout_constraintTop_toBottomOf="@id/timeText"
             app:layout_constraintBottom_toBottomOf="parent" />
 
-        <!-- Счетчик непрочитанных (Кружок) -->
         <TextView
             android:id="@+id/unreadBadge"
             android:layout_width="wrap_content"

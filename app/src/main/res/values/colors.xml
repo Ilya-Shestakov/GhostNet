@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Базовые цвета (одинаковые для обеих тем) -->
+
     <color name="accent_coral">#FF7A45</color>
     <color name="accent">#FF7A45</color>
     <color name="accent_light">#FF9A70</color>
@@ -9,26 +9,26 @@
     <color name="online_indicator">#4CAF50</color>
     <color name="offline_indicator">#FF5252</color>
 
-    <!-- НОВЫЕ ЦВЕТА ДЛЯ ЧАТА -->
     <color name="chat_me_bg">#4B4B4B</color>
     <color name="chat_me_text">#FFFFFF</color>
     <color name="chat_other_bg">#E4E7EB</color>
     <color name="chat_other_text">#1A1A1A</color>
     <color name="chat_input_bg">#F0F2F5</color>
 
-    <!-- ЦВЕТА СВЕТЛОЙ ТЕМЫ -->
-    <color name="primary">#F5F7FA</color> <!-- Светло-серый фон приложения -->
-    <color name="primary_dark">#E4E7EB</color> <!-- Цвет статус-бара -->
-    <color name="secondary">#FFFFFF</color> <!-- Белый тулбар и шапки -->
+    <color name="primary">#F5F7FA</color>
+    <color name="primary_dark">#E4E7EB</color>
+    <color name="secondary">#FFFFFF</color>
     <color name="surface">#FFFFFF</color>
-    <color name="surface_dark">#FFFFFF</color> <!-- Белые карточки -->
+    <color name="surface_dark">#FFFFFF</color>
 
     <color name="black">#000000</color>
 
     <color name="text_message">#16384D</color>
 
-    <color name="text_primary">#1A1A1A</color> <!-- Темный текст -->
-    <color name="text_secondary">#A6B4CF</color> <!-- Серый текст -->
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#A6B4CF</color>
+
+    <color name="chat_me_bg_soft">#4E4E4E</color>
 
     <color name="white">#FFFFFFFF</color>
     <color name="light_gray">#CCCCCC</color>

@@ -53,7 +53,6 @@ public class Setting extends AppCompatActivity {
     private ImageView btnBack;
     private TextView btnChangePassword, btnPrivacy, btnTextSize, btnClearCache, btnSupport, btnLogout, btnDeleteAccount;
 
-    // Новые свитчи
     private SwitchMaterial switchTheme, switchNotifications, switchMic, switchGallery;
 
     private SharedPreferences prefs;
@@ -68,7 +67,6 @@ public class Setting extends AppCompatActivity {
 
     private boolean isClosing = false;
 
-    // Лаунчеры для запроса разрешений
     private ActivityResultLauncher<String> requestNotificationLauncher;
     private ActivityResultLauncher<String> requestMicLauncher;
     private ActivityResultLauncher<String> requestGalleryLauncher;
@@ -141,16 +139,14 @@ public class Setting extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        syncPermissions(); // При возврате в настройки перепроверяем реальные разрешения системы
+        syncPermissions();
     }
 
     private void syncPermissions() {
-        // Убираем слушатели на секунду, чтобы свитч не вызывал код при программном переключении
         switchNotifications.setOnCheckedChangeListener(null);
         switchMic.setOnCheckedChangeListener(null);
         switchGallery.setOnCheckedChangeListener(null);
 
-        // Проверяем реальные системные допуски
         boolean hasNotification = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
         boolean hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
@@ -167,7 +163,6 @@ public class Setting extends AppCompatActivity {
     }
 
     private void setupSwitchListeners() {
-        // Уведомления
         switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!buttonView.isPressed()) return;
             VibratorHelper.vibrate(this, 30);
@@ -185,7 +180,6 @@ public class Setting extends AppCompatActivity {
             }
         });
 
-        // Микрофон
         switchMic.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!buttonView.isPressed()) return;
             VibratorHelper.vibrate(this, 30);
@@ -199,7 +193,6 @@ public class Setting extends AppCompatActivity {
             }
         });
 
-        // Галерея
         switchGallery.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!buttonView.isPressed()) return;
             VibratorHelper.vibrate(this, 30);
@@ -276,7 +269,7 @@ public class Setting extends AppCompatActivity {
         btnSettings.setGravity(android.view.Gravity.CENTER);
         btnSettings.setTextSize(16f);
         btnSettings.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnSettings.setTextColor(Color.parseColor("#E27950")); // Твой акцентный цвет
+        btnSettings.setTextColor(Color.parseColor("#E27950"));
         btnSettings.setPadding(0, 32, 0, 32);
         btnSettings.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
@@ -298,7 +291,7 @@ public class Setting extends AppCompatActivity {
                     activityRootView.setRenderEffect(null);
                 }
                 dialog.dismiss();
-                syncPermissions(); // Возвращаем свитч на место
+                syncPermissions();
             }).start();
         };
 
@@ -349,7 +342,6 @@ public class Setting extends AppCompatActivity {
         btnDeleteAccount.setOnClickListener(v -> { VibratorHelper.vibrate(this, 100); showDeleteAccountDialog(); });
     }
 
-    // --- АНИМАЦИИ И СИСТЕМНЫЕ МЕТОДЫ ОСТАЛИСЬ КАК БЫЛИ ---
     private void handleRevealAnimation(Bundle savedInstanceState) {
         if (savedInstanceState == null && getIntent().hasExtra("revealX")) {
             mainContentLayout.setVisibility(View.INVISIBLE);
@@ -408,7 +400,6 @@ public class Setting extends AppCompatActivity {
         return super.dispatchTouchEvent(ev);
     }
 
-    // --- МЕТОДЫ ДИАЛОГОВ ---
     private void showPrivacyDialog() {
         String[] privacyOptions = {"Закрытый профиль (только для друзей)", "Скрыть меня из глобального поиска", "Скрыть статус «В сети»"};
         boolean[] checkedItems = {prefs.getBoolean(PREF_PRIVACY_CLOSED_PROFILE, false), prefs.getBoolean(PREF_PRIVACY_HIDE_SEARCH, false), prefs.getBoolean(PREF_PRIVACY_HIDE_ONLINE, false)};

@@ -128,7 +128,6 @@ public class LoginActivity extends AppCompatActivity {
         input.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         input.setHint("Введите ваш Email");
 
-        // Берем email из поля ввода, если юзер уже начал его писать
         String currentEmail = emailEditText.getText().toString().trim();
         if (!TextUtils.isEmpty(currentEmail)) {
             input.setText(currentEmail);
@@ -138,7 +137,7 @@ public class LoginActivity extends AppCompatActivity {
         layout.setPadding(50, 40, 50, 10);
         layout.addView(input);
 
-        new MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories) // Убедись что тема подходит, или убери второй аргумент
+        new MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories)
                 .setTitle("Восстановление пароля")
                 .setMessage("Мы отправим ссылку для сброса пароля на вашу почту.")
                 .setView(layout)

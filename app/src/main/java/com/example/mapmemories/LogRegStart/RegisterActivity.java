@@ -28,7 +28,6 @@ public class RegisterActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private RelativeLayout overlay;
 
-    // Firebase
     private FirebaseAuth mAuth;
 
     @Override
@@ -36,44 +35,34 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // Инициализация Firebase
         mAuth = FirebaseAuth.getInstance();
-
-        // Инициализация views
         initViews();
-
-        // Обработчики кликов
         setupClickListeners();
     }
 
     private void initViews() {
-        // TextInputEditText
         usernameEditText = findViewById(R.id.usernameEditText);
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         confirmPasswordEditText = findViewById(R.id.confirmPasswordEditText);
 
-        // TextInputLayout
         usernameInputLayout = findViewById(R.id.usernameInputLayout);
         emailInputLayout = findViewById(R.id.emailInputLayout);
         passwordInputLayout = findViewById(R.id.passwordInputLayout);
         confirmPasswordInputLayout = findViewById(R.id.confirmPasswordInputLayout);
 
-        // Кнопки
         registerButton = findViewById(R.id.registerButton);
         loginButton = findViewById(R.id.loginButton);
         backButton = findViewById(R.id.backButton);
 
-        // Прогресс и overlay
         progressBar = findViewById(R.id.progressBar);
         overlay = findViewById(R.id.overlay);
 
-        // Скрываем ProgressBar и overlay
         showLoading(false);
     }
 
     private void setupClickListeners() {
-        // Кнопка регистрации
+
         registerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -81,7 +70,6 @@ public class RegisterActivity extends AppCompatActivity {
             }
         });
 
-        // Кнопка входа (уже есть аккаунт)
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -91,7 +79,6 @@ public class RegisterActivity extends AppCompatActivity {
             }
         });
 
-        // Кнопка назад
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -101,13 +88,11 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void attemptRegistration() {
-        // Сброс ошибок
         usernameInputLayout.setError(null);
         emailInputLayout.setError(null);
         passwordInputLayout.setError(null);
         confirmPasswordInputLayout.setError(null);
 
-        // Получаем значения
         String username = usernameEditText.getText().toString().trim();
         String email = emailEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString();
@@ -115,7 +100,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         boolean hasError = false;
 
-        // Валидация имени пользователя
         if (TextUtils.isEmpty(username)) {
             usernameInputLayout.setError("Введите имя пользователя");
             hasError = true;
@@ -127,7 +111,6 @@ public class RegisterActivity extends AppCompatActivity {
             hasError = true;
         }
 
-        // Валидация email
         if (TextUtils.isEmpty(email)) {
             emailInputLayout.setError("Введите email");
             hasError = true;
@@ -136,7 +119,6 @@ public class RegisterActivity extends AppCompatActivity {
             hasError = true;
         }
 
-        // Валидация пароля
         if (TextUtils.isEmpty(password)) {
             passwordInputLayout.setError("Введите пароль");
             hasError = true;
@@ -145,7 +127,6 @@ public class RegisterActivity extends AppCompatActivity {
             hasError = true;
         }
 
-        // Валидация подтверждения пароля
         if (TextUtils.isEmpty(confirmPassword)) {
             confirmPasswordInputLayout.setError("Подтвердите пароль");
             hasError = true;
@@ -155,17 +136,14 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         if (!hasError) {
-            // Показываем ProgressBar
             showLoading(true);
 
-            // Регистрация в Firebase
             mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
                             FirebaseUser firebaseUser = mAuth.getCurrentUser();
 
                             if (firebaseUser != null) {
-                                // 1. Обновляем имя в Auth
                                 com.google.firebase.auth.UserProfileChangeRequest profileUpdates =
                                         new com.google.firebase.auth.UserProfileChangeRequest.Builder()
                                                 .setDisplayName(username)
@@ -174,7 +152,6 @@ public class RegisterActivity extends AppCompatActivity {
                                 firebaseUser.updateProfile(profileUpdates)
                                         .addOnCompleteListener(profileTask -> {
                                             if (profileTask.isSuccessful()) {
-                                                // 2. Создаем структуру данных для базы
                                                 java.util.Map<String, Object> userMap = new java.util.HashMap<>();
                                                 userMap.put("username", username);
                                                 userMap.put("email", email);
@@ -186,18 +163,16 @@ public class RegisterActivity extends AppCompatActivity {
                                                 userMap.put("placesCount", 0);
                                                 userMap.put("likesCount", 0);
 
-                                                // 3. Сохраняем в Realtime Database
                                                 FirebaseDatabase.getInstance().getReference("users")
                                                         .child(firebaseUser.getUid())
                                                         .setValue(userMap)
                                                         .addOnCompleteListener(dbTask -> {
-                                                            showLoading(false); // Скрываем загрузку
+                                                            showLoading(false);
                                                             if (dbTask.isSuccessful()) {
                                                                 Toast.makeText(RegisterActivity.this, "Регистрация успешна!", Toast.LENGTH_SHORT).show();
                                                                 startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                                                                 finish();
                                                             } else {
-                                                                // Ошибка при записи в БД
                                                                 String dbError = dbTask.getException() != null ? dbTask.getException().getMessage() : "Неизвестная ошибка БД";
                                                                 Toast.makeText(RegisterActivity.this, "Ошибка БД: " + dbError, Toast.LENGTH_LONG).show();
                                                             }
@@ -212,8 +187,6 @@ public class RegisterActivity extends AppCompatActivity {
                                 Toast.makeText(RegisterActivity.this, "Ошибка: пользователь не найден", Toast.LENGTH_SHORT).show();
                             }
                         } else {
-                            // ---> ВОТ ЗДЕСЬ БЫЛА ПРОБЛЕМА <---
-                            // Если регистрация не удалась (email занят, нет сети и т.д.)
                             showLoading(false);
                             String errorMessage = task.getException() != null ? task.getException().getMessage() : "Ошибка регистрации";
                             Toast.makeText(RegisterActivity.this, errorMessage, Toast.LENGTH_LONG).show();

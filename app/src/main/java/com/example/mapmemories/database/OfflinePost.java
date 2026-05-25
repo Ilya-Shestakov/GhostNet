@@ -10,8 +10,8 @@ public class OfflinePost {
 
     public String title;
     public String description;
-    public String mediaUriString; // Путь к файлу на телефоне
-    public String mediaType;      // image или video
+    public String mediaUriString;
+    public String mediaType;
     public double latitude;
     public double longitude;
     public boolean isPublic;

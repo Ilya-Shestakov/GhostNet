@@ -31,7 +31,7 @@ public class PickPostActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_pick_post); // Используем чистый макет
+        setContentView(R.layout.activity_pick_post);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

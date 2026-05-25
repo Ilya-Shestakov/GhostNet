@@ -53,9 +53,9 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private void setupViewPager() {
         List<OnboardingItem> items = new ArrayList<>();
-        items.add(new OnboardingItem(R.drawable.onboarding_bg1, getString(R.string.onboarding_title_1), getString(R.string.onboarding_desc_1)));
-        items.add(new OnboardingItem(R.drawable.onboarding_bg2, getString(R.string.onboarding_title_2), getString(R.string.onboarding_desc_2)));
-        items.add(new OnboardingItem(R.drawable.onboarding_bg3, getString(R.string.onboarding_title_3), getString(R.string.onboarding_desc_3)));
+        items.add(new OnboardingItem(R.drawable.firstghost, getString(R.string.onboarding_title_1), getString(R.string.onboarding_desc_1)));
+        items.add(new OnboardingItem(R.drawable.secondghost, getString(R.string.onboarding_title_2), getString(R.string.onboarding_desc_2)));
+        items.add(new OnboardingItem(R.drawable.thirdghost, getString(R.string.onboarding_title_3), getString(R.string.onboarding_desc_3)));
 
         onboardingAdapter = new OnboardingAdapter(items);
         onboardingViewPager.setAdapter(onboardingAdapter);

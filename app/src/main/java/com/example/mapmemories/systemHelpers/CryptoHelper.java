@@ -8,15 +8,13 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoHelper {
 
-    // Тот самый ключ (32 байта). В будущем можешь убрать его в C++ библиотеку (NDK) для защиты от реверса.
-    private static final byte[] KEY = "SuperSecretKey32BytesLongMapMem!".getBytes();
+    private static final byte[] KEY = "SeCCreTTKeyMM!".getBytes();
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
-    private static final String PREFIX = "ENC:"; // Метка шифрованного сообщения
+    private static final String PREFIX = "ENC:";
 
-    // ШИФРУЕМ
     public static String encrypt(String plainText) {
         if (plainText == null || plainText.isEmpty()) return plainText;
         try {
@@ -34,7 +32,6 @@ public class CryptoHelper {
             System.arraycopy(iv, 0, encryptedData, 0, IV_LENGTH);
             System.arraycopy(cipherText, 0, encryptedData, IV_LENGTH, cipherText.length);
 
-            // Добавляем префикс, чтобы потом узнать наше шифрование
             return PREFIX + Base64.encodeToString(encryptedData, Base64.NO_WRAP);
 
         } catch (Exception e) {
@@ -43,13 +40,10 @@ public class CryptoHelper {
         }
     }
 
-    // РАСШИФРОВЫВАЕМ
     public static String decrypt(String text) {
-        // Если текста нет, или он старый (не зашифрованный), или системный (📷 Фото) - отдаем как есть
         if (text == null || !text.startsWith(PREFIX)) return text;
 
         try {
-            // Отрезаем префикс "ENC:"
             String base64Data = text.substring(PREFIX.length());
             byte[] encryptedData = Base64.decode(base64Data, Base64.NO_WRAP);
 
@@ -70,7 +64,7 @@ public class CryptoHelper {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return "🔒 Ошибка дешифровки";
+            return "Ошибка дешифровки";
         }
     }
 }

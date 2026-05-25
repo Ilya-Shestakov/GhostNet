@@ -21,14 +21,13 @@ public class VibratorHelper {
             if (vibrator == null || !vibrator.hasVibrator()) return;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Для Android 8.0+ используем VibrationEffect
+
                 VibrationEffect effect = VibrationEffect.createOneShot(
                         milliseconds,
                         VibrationEffect.DEFAULT_AMPLITUDE
                 );
                 vibrator.vibrate(effect);
             } else {
-                // Для старых версий
                 vibrator.vibrate(milliseconds);
             }
         } catch (Exception e) {
@@ -49,7 +48,6 @@ public class VibratorHelper {
                 Vibrator vibrator = getVibrator(context);
                 if (vibrator == null || !vibrator.hasVibrator()) return;
 
-                // Ограничиваем амплитуду 0-255
                 int safeAmplitude = Math.min(amplitude, 255);
 
                 VibrationEffect effect = VibrationEffect.createOneShot(milliseconds, safeAmplitude);
@@ -121,12 +119,11 @@ public class VibratorHelper {
      */
     private static Vibrator getVibrator(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Для Android 12+
+
             VibratorManager vibratorManager =
                     (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
             return vibratorManager != null ? vibratorManager.getDefaultVibrator() : null;
         } else {
-            // Для старых версий
             return (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         }
     }
@@ -135,28 +132,21 @@ public class VibratorHelper {
      * Предустановленные паттерны вибрации
      */
     public static class Patterns {
-        // Короткий клик
+
         public static final long[] CLICK = {0, 50};
 
-        // Долгое нажатие
         public static final long[] LONG_PRESS = {0, 200};
 
-        // Успех (два коротких импульса)
         public static final long[] SUCCESS = {0, 50, 100, 50};
 
-        // Ошибка (два длинных импульса)
         public static final long[] ERROR = {0, 150, 100, 150};
 
-        // Уведомление
         public static final long[] NOTIFICATION = {0, 300};
 
-        // Загрузка/ожидание (пульсация)
         public static final long[] LOADING = {0, 100, 100, 100, 100, 100};
 
-        // Переход/навигация
         public static final long[] NAVIGATION = {0, 80, 50, 80};
 
-        // Волна (для анимаций)
         public static final long[] WAVE = {0, 50, 30, 50, 30, 50};
     }
 }

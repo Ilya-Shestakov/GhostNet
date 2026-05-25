@@ -8,7 +8,6 @@
     android:paddingBottom="24dp"
     >
 
-    <!-- Маленькая полосочка сверху (как в iOS/Telegram) -->
     <View
         android:layout_width="40dp"
         android:layout_height="4dp"

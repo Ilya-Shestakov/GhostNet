@@ -38,7 +38,6 @@ public class OfflineQueueBottomSheet extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Делаем фон прозрачным, чтобы углы были скругленные (если у тебя в стиле это не задано)
         if (getDialog() != null && getDialog().getWindow() != null) {
             getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
@@ -50,7 +49,6 @@ public class OfflineQueueBottomSheet extends BottomSheetDialogFragment {
         adapter = new OfflineMemoriesAdapter(getContext(), new ArrayList<>(), this::deleteOfflinePost);
         recyclerView.setAdapter(adapter);
 
-        // Подписка на обновления базы
         AppDatabase.getDatabase(getContext()).offlinePostDao().getAllPostsLive().observe(getViewLifecycleOwner(), posts -> {
             if (posts != null && !posts.isEmpty()) {
                 adapter.updateList(posts);
@@ -60,8 +58,6 @@ public class OfflineQueueBottomSheet extends BottomSheetDialogFragment {
                 adapter.updateList(new ArrayList<>());
                 tvEmptyState.setVisibility(View.VISIBLE);
                 recyclerView.setVisibility(View.GONE);
-                // Можно раскомментировать, если хочешь, чтобы окно закрывалось само, когда пусто
-                // dismiss();
             }
         });
     }

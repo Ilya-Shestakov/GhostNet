@@ -8,44 +8,44 @@
     android:background="@color/primary"
     tools:context=".Lenta.MainActivity">
 
-    <!-- Header с вкладками -->
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/topHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/primary"
         android:paddingTop="8dp"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="0dp">
 
         <TextView
             android:id="@+id/appTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="MapMemories"
+            android:layout_marginStart="20dp"
+            android:text="GhostNet"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
             android:textStyle="bold"
-            android:layout_marginStart="20dp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabLayout"
             android:layout_width="match_parent"
             android:layout_height="45dp"
             android:background="@android:color/transparent"
+            app:layout_constraintTop_toBottomOf="@id/appTitle"
             app:tabIndicatorColor="@color/accent"
-            app:tabIndicatorHeight="3dp"
             app:tabIndicatorFullWidth="false"
-            app:tabSelectedTextColor="@color/text_primary"
-            app:tabTextColor="@color/text_secondary"
+            app:tabIndicatorHeight="3dp"
             app:tabRippleColor="@android:color/transparent"
+            app:tabSelectedTextColor="@color/text_primary"
             app:tabTextAppearance="@style/TextAppearance.AppCompat.Body2"
-            app:layout_constraintTop_toBottomOf="@id/appTitle" />
+            app:tabTextColor="@color/text_secondary" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Контейнер для свайпов -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
@@ -53,8 +53,7 @@
         app:layout_constraintTop_toBottomOf="@id/topHeader"
         app:layout_constraintBottom_toBottomOf="parent" />
 
-    <!-- Упрощенный Bottom Dock (Настройки, Добавить, Профиль) -->
-    <com.google.android.material.card.MaterialCardView
+     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomDock"
         android:layout_width="wrap_content"
         android:layout_height="64dp"

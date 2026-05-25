@@ -85,7 +85,6 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private SwipeBackHelper swipeBackHelper;
 
-    // СПИСОК ВЫБРАННЫХ ФОТО
     private List<Uri> selectedMediaUris = new ArrayList<>();
     private String selectedMediaType = "image";
     private double selectedLat = 0.0;
@@ -112,7 +111,6 @@ public class CreatePostActivity extends AppCompatActivity {
 
         swipeBackHelper = new SwipeBackHelper(this);
 
-        // Анимация появления
         if (savedInstanceState == null && getIntent().hasExtra("revealX")) {
             final View root = findViewById(android.R.id.content);
             root.setVisibility(View.INVISIBLE);
@@ -180,7 +178,6 @@ public class CreatePostActivity extends AppCompatActivity {
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        // ВАЖНО: Мы НЕ очищаем список (selectedMediaUris.clear()), а ДОБАВЛЯЕМ к нему
                         if (result.getData().getClipData() != null) {
                             int count = result.getData().getClipData().getItemCount();
                             for (int i = 0; i < count; i++) {
@@ -210,13 +207,11 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private void updateMediaUI() {
         if (selectedMediaUris.isEmpty()) {
-            // Показываем плейсхолдер
             layoutAddMediaPlaceholder.setVisibility(View.VISIBLE);
             viewPagerMedia.setVisibility(View.GONE);
             layoutMediaControls.setVisibility(View.GONE);
             tabLayoutDots.setVisibility(View.GONE);
         } else {
-            // Показываем карусель и кнопки управления
             layoutAddMediaPlaceholder.setVisibility(View.GONE);
             viewPagerMedia.setVisibility(View.VISIBLE);
             layoutMediaControls.setVisibility(View.VISIBLE);
@@ -236,7 +231,6 @@ public class CreatePostActivity extends AppCompatActivity {
     private void setupListeners() {
         btnClose.setOnClickListener(v -> onBackPressed());
 
-        // Открытие галереи
         View.OnClickListener openPicker = v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("image/*");
@@ -244,13 +238,11 @@ public class CreatePostActivity extends AppCompatActivity {
             mediaPickerLauncher.launch(intent);
         };
 
-        // Клик по пустой зоне или кнопке "Добавить еще"
         btnAddMedia.setOnClickListener(v -> {
             if (selectedMediaUris.isEmpty()) openPicker.onClick(v);
         });
         btnAddMoreMedia.setOnClickListener(openPicker);
 
-        // Кнопка очистки
         btnClearMedia.setOnClickListener(v -> {
             selectedMediaUris.clear();
             updateMediaUI();
@@ -261,7 +253,6 @@ public class CreatePostActivity extends AppCompatActivity {
             locationPickerLauncher.launch(intent);
         });
 
-        // Логика свитча приватности
         switchPrivacy.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 ivPrivacyIcon.setImageResource(R.drawable.ic_public);
@@ -399,7 +390,6 @@ public class CreatePostActivity extends AppCompatActivity {
         if (postId != null) {
             postsRef.child(postId).setValue(newPost)
                     .addOnSuccessListener(aVoid -> {
-                        // УВЕЛИЧИВАЕМ СЧЕТЧИК ПОСТОВ В ПРОФИЛЕ
                         FirebaseDatabase.getInstance().getReference("users")
                                 .child(userId).child("memoriesCount")
                                 .setValue(com.google.firebase.database.ServerValue.increment(1));

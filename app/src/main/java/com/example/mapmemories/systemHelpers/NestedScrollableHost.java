@@ -33,7 +33,6 @@ public class NestedScrollableHost extends FrameLayout {
     private ViewPager2 getParentViewPager() {
         android.view.ViewParent v = getParent();
         while (v != null && !(v instanceof ViewPager2)) {
-            // ДОБАВЛЕНА ЭТА ПРОВЕРКА, ЧТОБЫ ИЗБЕЖАТЬ КРАША
             if (!(v instanceof android.view.View)) {
                 return null;
             }
@@ -51,9 +50,9 @@ public class NestedScrollableHost extends FrameLayout {
         View child = getChild();
         if (child == null) return false;
 
-        if (orientation == 0) { // Горизонтальный скролл
+        if (orientation == 0) {
             return child.canScrollHorizontally(direction);
-        } else { // Вертикальный скролл
+        } else {
             return child.canScrollVertically(direction);
         }
     }
@@ -70,7 +69,6 @@ public class NestedScrollableHost extends FrameLayout {
 
         int orientation = parentViewPager.getOrientation();
 
-        // Если внутренний элемент вообще не может скроллиться, ничего не делаем
         if (!canChildScroll(orientation, -1f) && !canChildScroll(orientation, 1f)) {
             return;
         }
@@ -89,15 +87,11 @@ public class NestedScrollableHost extends FrameLayout {
 
             if (scaledDx > touchSlop || scaledDy > touchSlop) {
                 if (isVpHorizontal == (scaledDy > scaledDx)) {
-                    // Свайп идет перпендикулярно (вверх-вниз), отдаем скролл родителю
                     getParent().requestDisallowInterceptTouchEvent(false);
                 } else {
-                    // Свайп идет параллельно (влево-вправо)
                     if (canChildScroll(orientation, isVpHorizontal ? dx : dy)) {
-                        // Фотки еще есть, блокируем родителя, скроллим фотки
                         getParent().requestDisallowInterceptTouchEvent(true);
                     } else {
-                        // Фотки закончились, отдаем скролл родителю (переход на вкладку Чаты)
                         getParent().requestDisallowInterceptTouchEvent(false);
                     }
                 }

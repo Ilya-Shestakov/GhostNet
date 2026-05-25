@@ -30,11 +30,9 @@ public class PostUtils {
         boolean isLiked = post.getLikes() != null && post.getLikes().containsKey(currentUserId);
 
         if (isLiked) {
-            // Убираем лайк
             postRef.child("likes").child(currentUserId).removeValue();
             authorRef.setValue(com.google.firebase.database.ServerValue.increment(-1));
         } else {
-            // Ставим лайк
             postRef.child("likes").child(currentUserId).setValue(true);
             authorRef.setValue(com.google.firebase.database.ServerValue.increment(1));
         }
@@ -57,7 +55,7 @@ public class PostUtils {
                     value = 0L;
                 }
                 long newValue = value + increment;
-                if (newValue < 0) newValue = 0; // Не уходим в минус
+                if (newValue < 0) newValue = 0;
 
                 currentData.setValue(newValue);
                 return Transaction.success(currentData);
@@ -90,13 +88,11 @@ public class PostUtils {
                 }
 
                 if (snapshot.hasChild(currentUserId)) {
-                    // Лайкнуто нами
+
                     likeIcon.setImageResource(R.drawable.ic_favorite_red);
-                    likeIcon.setColorFilter(null); // Убираем тинт, чтобы сердце было красным
+                    likeIcon.setColorFilter(null);
                 } else {
-                    // Не лайкнуто
                     likeIcon.setImageResource(R.drawable.ic_favorite_border);
-                    // Устанавливаем цвет контура (серый или accent, в зависимости от темы)
                     likeIcon.setColorFilter(likeIcon.getContext().getResources().getColor(R.color.accent));
                 }
             }

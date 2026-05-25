@@ -95,7 +95,6 @@ public class Profile extends AppCompatActivity {
 
     private CollapsingToolbarLayout collapsingToolbar;
 
-    // Zoom
     private FrameLayout expandedContainer;
     private MaterialCardView expandedCard;
     private ViewPager2 expandedViewPager;
@@ -370,22 +369,18 @@ public class Profile extends AppCompatActivity {
                         memoriesCount.setText(String.valueOf(myPostList.size()));
                         likesCount.setText(String.valueOf(totalLikesCounter));
 
-                        // Получаем параметры шапки
                         AppBarLayout.LayoutParams params = (AppBarLayout.LayoutParams) collapsingToolbar.getLayoutParams();
 
                         if (myPostList.isEmpty()) {
                             memoriesRecyclerView.setVisibility(View.GONE);
 
-                            // ОТКЛЮЧАЕМ СКРОЛЛ (шапка становится неподвижной)
                             params.setScrollFlags(0);
                         } else {
                             memoriesRecyclerView.setVisibility(View.VISIBLE);
 
-                            // ВКЛЮЧАЕМ СКРОЛЛ обратно (когда есть хотя бы 1 пост)
                             params.setScrollFlags(AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL | AppBarLayout.LayoutParams.SCROLL_FLAG_EXIT_UNTIL_COLLAPSED);
                         }
 
-                        // Применяем параметры
                         collapsingToolbar.setLayoutParams(params);
                     }
                     @Override public void onCancelled(@NonNull DatabaseError error) {}

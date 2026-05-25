@@ -69,7 +69,6 @@ public class UserProfileActivity extends AppCompatActivity {
     private RecyclerView userPostsRecyclerView;
     private ImageButton btnFriendAction, btnChat;
 
-    // Zoom & Аватарки
     private ViewPager2 profileImageViewPager, expandedViewPager;
     private AvatarAdapter avatarAdapter, expandedAdapter;
     private List<String> avatarUrls = new ArrayList<>();
@@ -154,7 +153,6 @@ public class UserProfileActivity extends AppCompatActivity {
         btnFriendAction = findViewById(R.id.btnFriendAction);
         btnChat = findViewById(R.id.btnChat);
 
-        // Расширенный просмотр
         expandedContainer = findViewById(R.id.expandedContainer);
         expandedBackground = findViewById(R.id.expandedBackground);
         expandedCard = findViewById(R.id.expandedCard);
@@ -250,7 +248,6 @@ public class UserProfileActivity extends AppCompatActivity {
         });
     }
 
-    // --- ЛОГИКА ПОДПИСКИ С ИКОНКАМИ ---
     private void checkFollowStatus() {
         rootRef.child("users").child(currentUserId).child("requests_sent")
                 .addValueEventListener(new ValueEventListener() {
@@ -260,13 +257,11 @@ public class UserProfileActivity extends AppCompatActivity {
 
                         if (snapshot.hasChild(targetUserId)) {
                             currentFollowState = STATE_FOLLOWING;
-                            // Иконка "галочка", цвет серый
-                            btnFriendAction.setImageResource(R.drawable.ic_check); // Создай если нет
+                            btnFriendAction.setImageResource(R.drawable.ic_check);
                             btnFriendAction.setBackgroundTintList(getResources().getColorStateList(R.color.secondary));
                             btnFriendAction.setColorFilter(getResources().getColor(R.color.text_primary));
                         } else {
                             currentFollowState = STATE_NOT_FOLLOWING;
-                            // Иконка "плюс", цвет акцентный
                             btnFriendAction.setImageResource(R.drawable.ic_add);
                             btnFriendAction.setBackgroundTintList(getResources().getColorStateList(R.color.accent));
                             btnFriendAction.setColorFilter(getResources().getColor(android.R.color.white));
@@ -341,7 +336,6 @@ public class UserProfileActivity extends AppCompatActivity {
         });
     }
 
-    // --- ФУНКЦИИ СКАЧИВАНИЯ И ШАРИНГА ---
     private void downloadCurrentPhoto() {
         if (avatarUrls.isEmpty()) return;
         String url = avatarUrls.get(expandedViewPager.getCurrentItem());
@@ -368,7 +362,6 @@ public class UserProfileActivity extends AppCompatActivity {
         startActivity(Intent.createChooser(shareIntent, "Поделиться фото"));
     }
 
-    // --- АНИМАЦИИ ОТКРЫТИЯ/ЗАКРЫТИЯ (С блюром) ---
     private void zoomImageFromThumb(final View thumbView, int startPosition) {
         if (currentAnimator != null) currentAnimator.cancel();
 
@@ -481,7 +474,6 @@ public class UserProfileActivity extends AppCompatActivity {
         else super.onBackPressed();
     }
 
-    // --- АДАПТЕР ДЛЯ VIEWPAGER2 ---
     private static class AvatarAdapter extends RecyclerView.Adapter<AvatarAdapter.ViewHolder> {
         private final List<String> urls;
         private final OnItemClickListener listener;

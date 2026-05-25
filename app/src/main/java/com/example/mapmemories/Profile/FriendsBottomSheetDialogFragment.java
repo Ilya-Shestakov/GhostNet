@@ -30,7 +30,7 @@ public class FriendsBottomSheetDialogFragment extends BottomSheetDialogFragment 
     private UsersAdapter adapter;
     private List<User> userList;
 
-    private String mode; // "friends", "followers", "following"
+    private String mode;
     private String currentUserId;
 
     public static FriendsBottomSheetDialogFragment newInstance(String mode, String userId) {
@@ -58,11 +58,11 @@ public class FriendsBottomSheetDialogFragment extends BottomSheetDialogFragment 
 
         userList = new ArrayList<>();
         adapter = new UsersAdapter(getContext(), userList, user -> {
-            // Переход в профиль
+
             Intent intent = new Intent(getContext(), UserProfileActivity.class);
             intent.putExtra("targetUserId", user.getId());
             startActivity(intent);
-            dismiss(); // Закрываем шторку
+            dismiss();
         });
         recyclerView.setAdapter(adapter);
 
@@ -78,15 +78,13 @@ public class FriendsBottomSheetDialogFragment extends BottomSheetDialogFragment 
         switch (mode) {
             case "followers":
                 titleText.setText("Подписчики");
-                // requests_incoming - это те, кто хочет добавиться ко мне (мои подписчики)
                 listRef = rootRef.child("users").child(currentUserId).child("requests_incoming");
                 break;
             case "following":
                 titleText.setText("Подписки");
-                // requests_sent - это те, к кому я постучался (мои подписки)
                 listRef = rootRef.child("users").child(currentUserId).child("requests_sent");
                 break;
-            default: // "friends"
+            default:
                 titleText.setText("Друзья");
                 listRef = rootRef.child("users").child(currentUserId).child("friends");
                 break;

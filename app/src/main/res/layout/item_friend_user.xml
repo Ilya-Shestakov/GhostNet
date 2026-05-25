@@ -42,7 +42,6 @@
             android:visibility="gone"/>
     </LinearLayout>
 
-    <!-- Кнопки для заявок -->
     <LinearLayout
         android:id="@+id/actionButtonsLayout"
         android:layout_width="wrap_content"

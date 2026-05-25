@@ -13,9 +13,9 @@ public class ZoomOutPageTransformer implements ViewPager2.PageTransformer {
         int pageWidth = view.getWidth();
         int pageHeight = view.getHeight();
 
-        if (position < -1) { // Страница ушла влево
+        if (position < -1) {
             view.setAlpha(0f);
-        } else if (position <= 1) { // Страница на экране
+        } else if (position <= 1) {
             float scaleFactor = Math.max(MIN_SCALE, 1 - Math.abs(position));
             float vertMargin = pageHeight * (1 - scaleFactor) / 2;
             float horzMargin = pageWidth * (1 - scaleFactor) / 2;
@@ -29,7 +29,7 @@ public class ZoomOutPageTransformer implements ViewPager2.PageTransformer {
             view.setScaleX(scaleFactor);
             view.setScaleY(scaleFactor);
             view.setAlpha(MIN_ALPHA + (scaleFactor - MIN_SCALE) / (1 - MIN_SCALE) * (1 - MIN_ALPHA));
-        } else { // Страница ушла вправо
+        } else {
             view.setAlpha(0f);
         }
     }

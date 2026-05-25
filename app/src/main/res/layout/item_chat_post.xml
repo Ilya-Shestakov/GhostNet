@@ -110,7 +110,6 @@
             </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- МИНИМАЛИСТИЧНЫЙ ДИЗАЙН ГС БЕЗ ПОЛЗУНКА -->
         <LinearLayout
             android:id="@+id/voiceLayout"
             android:layout_width="wrap_content"
@@ -208,7 +207,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- КОНТЕЙНЕР ДЛЯ ФАЙЛА -->
         <LinearLayout
             android:id="@+id/fileLayout"
             android:layout_width="wrap_content"

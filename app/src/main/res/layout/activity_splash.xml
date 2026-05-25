@@ -6,12 +6,11 @@
     android:layout_height="match_parent"
     android:background="@color/primary">
 
-    <!-- Текст названия (сразу под логотипом) -->
     <TextView
         android:id="@+id/appNameTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="MapMemories"
+        android:text="GhostNet"
         android:textColor="@color/text_primary"
         android:textSize="32sp"
         android:textStyle="bold"
@@ -21,15 +20,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Круги для эффекта ударной волны (Shockwave) -->
-    <!-- Они должны быть по центру логотипа -->
     <ImageView
         android:id="@+id/rippleCircle1"
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:src="@drawable/circle_background"
         android:alpha="0"
-        app:tint="@color/accent"
+        app:tint="@color/black"
         app:layout_constraintBottom_toBottomOf="@id/logoImageView"
         app:layout_constraintEnd_toEndOf="@id/logoImageView"
         app:layout_constraintStart_toStartOf="@id/logoImageView"
@@ -41,13 +38,12 @@
         android:layout_height="150dp"
         android:src="@drawable/circle_background"
         android:alpha="0"
-        app:tint="@color/therty"
+        app:tint="@color/light_gray"
         app:layout_constraintBottom_toBottomOf="@id/logoImageView"
         app:layout_constraintEnd_toEndOf="@id/logoImageView"
         app:layout_constraintStart_toStartOf="@id/logoImageView"
         app:layout_constraintTop_toTopOf="@id/logoImageView" />
 
-    <!-- Логотип (поверх кругов) -->
     <ImageView
         android:id="@+id/logoImageView"
         android:layout_width="120dp"

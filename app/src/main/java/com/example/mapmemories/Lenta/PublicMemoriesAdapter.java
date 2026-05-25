@@ -78,7 +78,6 @@ public class PublicMemoriesAdapter extends RecyclerView.Adapter<PublicMemoriesAd
         holder.date.setText(DateFormat.format("dd MMM yyyy, HH:mm", new Date(post.getTimestamp())).toString());
         holder.coordinates.setText(String.format(Locale.US, "%.4f, %.4f", post.getLatitude(), post.getLongitude()));
 
-        // Настройка карусели
         List<String> urls = post.getMediaUrls();
         if (urls == null || urls.isEmpty()) {
             urls = new ArrayList<>();
@@ -90,7 +89,6 @@ public class PublicMemoriesAdapter extends RecyclerView.Adapter<PublicMemoriesAd
         ImageCarouselAdapter carouselAdapter = new ImageCarouselAdapter(context, urls, (pos, url) -> listener.onPostClick(post));
         holder.viewPagerMedia.setAdapter(carouselAdapter);
 
-        // ПРИМЕНЯЕМ КРАСИВУЮ АНИМАЦИЮ
         holder.viewPagerMedia.setPageTransformer(new ZoomOutPageTransformer());
 
         if (urls.size() > 1) {
@@ -98,11 +96,9 @@ public class PublicMemoriesAdapter extends RecyclerView.Adapter<PublicMemoriesAd
             holder.photoCounter.setVisibility(View.VISIBLE);
             new TabLayoutMediator(holder.tabLayoutDots, holder.viewPagerMedia, (tab, pos) -> {}).attach();
 
-            // Обновляем счетчик при свайпе
             final int totalPhotos = urls.size();
             holder.photoCounter.setText("1/" + totalPhotos);
 
-            // Удаляем старые коллбеки, чтобы не было утечек при переиспользовании ViewHolder
             holder.viewPagerMedia.unregisterOnPageChangeCallback(holder.pageChangeCallback);
 
             holder.pageChangeCallback = new ViewPager2.OnPageChangeCallback() {
@@ -121,7 +117,6 @@ public class PublicMemoriesAdapter extends RecyclerView.Adapter<PublicMemoriesAd
         holder.videoIcon.setVisibility("video".equals(post.getMediaType()) ? View.VISIBLE : View.GONE);
         loadAuthorInfo(post.getUserId(), holder);
 
-        // Лайки
         holder.likeCount.setText(String.valueOf(post.getLikeCount()));
         boolean isLikedByMe = post.getLikes() != null && !currentUserId.isEmpty() && post.getLikes().containsKey(currentUserId);
         updateLikeIconState(holder.likeIcon, isLikedByMe);
@@ -146,7 +141,6 @@ public class PublicMemoriesAdapter extends RecyclerView.Adapter<PublicMemoriesAd
             }
         });
 
-        // Клик по карточке (кроме карусели, она обрабатывается внутри адаптера)
         holder.itemView.setOnClickListener(v -> listener.onPostClick(post));
 
         if (isAuthorClickable) {

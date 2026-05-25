@@ -27,74 +27,58 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
-        // Инициализация
         logoImageView = findViewById(R.id.logoImageView);
         rippleCircle1 = findViewById(R.id.rippleCircle1);
         rippleCircle2 = findViewById(R.id.rippleCircle2);
         appNameTextView = findViewById(R.id.appNameTextView);
 
-        // 1. ПОДГОТОВКА: Убираем логотип наверх за пределы экрана
-        // translationY(-2000) поднимает его высоко вверх
         logoImageView.setTranslationY(-2500f);
 
-        // Подготавливаем текст (смещаем вниз и делаем прозрачным)
         appNameTextView.setAlpha(0f);
         appNameTextView.setTranslationY(100f);
 
-        // ЗАПУСК АНИМАЦИИ
         startDropAnimation();
     }
 
     private void startDropAnimation() {
-        // --- ЭТАП 1: ПАДЕНИЕ ---
-        // Логотип летит вниз. Используем BounceInterpolator, чтобы он "ударился" и подпрыгнул
         logoImageView.animate()
                 .translationY(0f)
-                .setDuration(1200) // Длительность падения и отскоков
-                .setStartDelay(300) // Небольшая пауза перед началом
+                .setDuration(1200)
+                .setStartDelay(300)
                 .setInterpolator(new BounceInterpolator())
                 .start();
 
-        // --- ЭТАП 2: УДАР (IMPACT) ---
-        // Мы знаем, что при BounceInterpolator первый "удар" об землю происходит
-        // примерно на 1/3 или 1/4 от времени анимации. Подбираем тайминг.
-        // Если duration 1200, то удар где-то через 600-700мс после начала (с учетом задержки)
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
 
-            // 1. Сильная вибрация "Удар"
             VibratorHelper.vibrate(this, 70);
 
-            // 2. Расходящиеся круги (Shockwave)
             playShockwaveAnimation();
 
-        }, 850); // <-- Тайминг удара (300 delay + ~550 полёт)
+        }, 850);
 
 
-        // --- ЭТАП 3: ПОЯВЛЕНИЕ ТЕКСТА ---
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // Легкая вибрация при появлении текста
             VibratorHelper.vibrate(this, 20);
 
             appNameTextView.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setDuration(600)
-                    .setInterpolator(new OvershootInterpolator()) // Текст чуть "перелетит" и вернется
+                    .setInterpolator(new OvershootInterpolator())
                     .start();
 
         }, 1400);
 
-        // --- ЭТАП 4: ПЕРЕХОД ДАЛЬШЕ ---
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             startActivity(new Intent(SplashActivity.this, OnboardingActivity.class));
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             finish();
-        }, 2500); // Общее время заставки
+        }, 2500);
     }
 
     private void playShockwaveAnimation() {
-        // Круг 1: Быстрый и резкий
+
         rippleCircle1.setAlpha(0.7f);
         rippleCircle1.setScaleX(1f);
         rippleCircle1.setScaleY(1f);
@@ -107,7 +91,6 @@ public class SplashActivity extends AppCompatActivity {
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
 
-        // Круг 2: Чуть медленнее, для "эхо" эффекта
         rippleCircle2.setAlpha(0.5f);
         rippleCircle2.setScaleX(1f);
         rippleCircle2.setScaleY(1f);
@@ -117,7 +100,7 @@ public class SplashActivity extends AppCompatActivity {
                 .scaleY(4.5f)
                 .alpha(0f)
                 .setDuration(800)
-                .setStartDelay(100) // Чуть позже первого
+                .setStartDelay(100)
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
     }

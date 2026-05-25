@@ -245,7 +245,6 @@
         </ScrollView>
     </LinearLayout>
 
-    <!-- ОВЕРЛЕЙ ЗУМА -->
     <FrameLayout
         android:id="@+id/expandedContainer"
         android:layout_width="match_parent"

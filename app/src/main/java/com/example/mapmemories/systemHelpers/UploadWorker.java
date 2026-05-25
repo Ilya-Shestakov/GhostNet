@@ -28,7 +28,6 @@ public class UploadWorker extends Worker {
         super(context, workerParams);
         db = AppDatabase.getDatabase(context);
 
-        // Инициализация Cloudinary
         Map<String, String> config = new HashMap<>();
         config.put("cloud_name", "dvbjhturp");
         config.put("api_key", "149561293632228");
@@ -48,10 +47,8 @@ public class UploadWorker extends Worker {
 
         for (OfflinePost post : posts) {
             try {
-                // 1. Загрузка файла в Cloudinary
                 File mediaFile = new File(post.mediaUriString);
                 if (!mediaFile.exists()) {
-                    // Если файл удален с телефона, удаляем запись из БД и пропускаем
                     db.offlinePostDao().delete(post);
                     continue;
                 }
@@ -61,10 +58,8 @@ public class UploadWorker extends Worker {
                 Map uploadResult = cloudinary.uploader().upload(mediaFile, params);
                 String uploadedUrl = (String) uploadResult.get("secure_url");
 
-                // СОЗДАЕМ СПИСОК ИЗ ОДНОЙ ССЫЛКИ ДЛЯ НОВОГО КОНСТРУКТОРА
                 List<String> mediaUrls = Collections.singletonList(uploadedUrl);
 
-                // 2. Сохранение в Firebase (теперь передаем mediaUrls)
                 String postId = postsRef.push().getKey();
                 Post firebasePost = new Post(
                         postId, userId, post.title, post.description,
@@ -76,12 +71,11 @@ public class UploadWorker extends Worker {
                     postsRef.child(postId).setValue(firebasePost);
                 }
 
-                // 3. Удаляем из локальной БД после успеха
                 db.offlinePostDao().delete(post);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                return Result.retry(); // Если ошибка сети, попробуем позже
+                return Result.retry();
             }
         }
 

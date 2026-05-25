@@ -44,12 +44,10 @@ public class MessageListenerService extends Service {
     private DatabaseReference chatsRef;
     private String currentUserId;
 
-    // Время запуска сервиса (чтобы не присылать уведомления за старые сообщения при перезапуске)
     private long serviceStartTime;
 
-    // Храним ID сообщений, о которых уже уведомили, чтобы не спамить
     private HashSet<String> notifiedMessages = new HashSet<>();
-    // Храним слушатели, чтобы очищать их при остановке
+
     private HashMap<String, ChildEventListener> chatListeners = new HashMap<>();
 
     @Override
@@ -75,12 +73,10 @@ public class MessageListenerService extends Service {
 
         listenToMyChats();
 
-        // START_STICKY говорит системе: "Если убьешь меня ради памяти, перезапусти, как только сможешь"
         return START_STICKY;
     }
 
     private void listenToMyChats() {
-        // Слушаем ВСЕ чаты, но выбираем только те, где есть наш ID
         chatsRef.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
@@ -97,7 +93,7 @@ public class MessageListenerService extends Service {
     }
 
     private void attachMessageListener(String chatId) {
-        if (chatListeners.containsKey(chatId)) return; // Уже слушаем
+        if (chatListeners.containsKey(chatId)) return;
 
         DatabaseReference messagesRef = chatsRef.child(chatId).child("messages");
 
@@ -111,7 +107,6 @@ public class MessageListenerService extends Service {
                         && message.getReceiverId().equals(currentUserId)
                         && !message.isRead()) {
 
-                    // Проверяем, что сообщение пришло ПОСЛЕ запуска сервиса и мы его еще не показывали
                     if (message.getTimestamp() > serviceStartTime && !notifiedMessages.contains(message.getMessageId())) {
                         notifiedMessages.add(message.getMessageId());
                         showNotification(message, chatId);
@@ -135,7 +130,6 @@ public class MessageListenerService extends Service {
             return;
         }
 
-        // Запрашиваем данные отправителя (Имя и Аватар)
         FirebaseDatabase.getInstance().getReference("users").child(senderId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -152,12 +146,10 @@ public class MessageListenerService extends Service {
     }
 
     private void buildAndDisplayNotification(ChatMessage message, String senderId, String senderName, String avatarUrl) {
-        // Так как скачивание картинки требует времени, делаем это в фоновом потоке
         Executors.newSingleThreadExecutor().execute(() -> {
             Bitmap avatarBitmap = null;
             try {
                 if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                    // Скачиваем аватарку через Glide синхронно
                     avatarBitmap = Glide.with(getApplicationContext())
                             .asBitmap()
                             .load(avatarUrl)
@@ -192,20 +184,17 @@ public class MessageListenerService extends Service {
             PendingIntent pendingIntent = PendingIntent.getActivity(this, senderId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_chat) // ВАЖНО: Укажи тут свою белую иконку чата/логотипа (без фона)
+                    .setSmallIcon(R.drawable.ic_chat)
                     .setStyle(messagingStyle)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
-                    .setColor(getResources().getColor(R.color.accent)) // Цвет значка
+                    .setColor(getResources().getColor(R.color.accent))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setDefaults(NotificationCompat.DEFAULT_ALL) // Звук и вибрация по умолчанию
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE);
 
             NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-            // Используем hashCode отправителя как ID уведомления.
-            // Это значит, что все сообщения от одного человека будут заменять друг друга (или группироваться),
-            // а не плодить 100 отдельных уведомлений.
             if (notificationManager != null) {
                 notificationManager.notify(senderId.hashCode(), builder.build());
             }
@@ -221,7 +210,7 @@ public class MessageListenerService extends Service {
             );
             channel.setDescription("Уведомления о новых сообщениях");
             channel.enableVibration(true);
-            channel.setShowBadge(true); // Чтобы на иконке приложения была точка
+            channel.setShowBadge(true);
 
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
@@ -239,6 +228,5 @@ public class MessageListenerService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Тут по-хорошему надо отписывать слушатели, но так как сервис умирает, сборщик мусора справится
     }
 }

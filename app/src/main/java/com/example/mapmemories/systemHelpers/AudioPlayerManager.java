@@ -35,7 +35,6 @@ public class AudioPlayerManager {
     }
 
     public void play(String messageId, String url) {
-        // Если нажали Play на уже текущем треке
         if (messageId.equals(currentPlayingId) && mediaPlayer != null) {
             mediaPlayer.start();
             isPlaying = true;
@@ -44,7 +43,6 @@ public class AudioPlayerManager {
             return;
         }
 
-        // Выключаем старое аудио, если играло
         stop();
 
         currentPlayingId = messageId;

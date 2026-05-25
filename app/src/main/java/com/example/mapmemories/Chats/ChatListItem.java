@@ -8,7 +8,7 @@ public class ChatListItem {
     public ChatMessage lastMessage;
     public int unreadCount;
     public boolean isPinned;
-    public long pinnedOrder; // Для сохранения порядка закрепов
+    public long pinnedOrder;
 
     public ChatListItem(String chatId, User user) {
         this.chatId = chatId;

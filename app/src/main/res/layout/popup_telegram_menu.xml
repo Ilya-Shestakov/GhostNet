@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
-            <!-- Эмодзи добавим программно -->
+
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -29,14 +29,13 @@
         android:background="#33AAAAAA"
         android:layout_marginBottom="4dp"/>
 
-    <!-- Кнопки действий -->
     <LinearLayout
         android:id="@+id/actionsContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:minWidth="200dp">
-        <!-- Кнопки тоже добавим программно, чтобы они были ровными -->
+
     </LinearLayout>
 
 </LinearLayout>

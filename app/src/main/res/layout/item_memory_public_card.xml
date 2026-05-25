@@ -19,7 +19,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Шапка: Автор -->
         <LinearLayout
             android:id="@+id/headerLayout"
             android:layout_width="match_parent"
@@ -81,7 +80,6 @@
 
             </com.example.mapmemories.systemHelpers.NestedScrollableHost>
 
-            <!-- Градиент для читаемости точек -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
@@ -101,7 +99,6 @@
                 app:tabPaddingEnd="0dp"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Счетчик фото (1/3) -->
             <TextView
                 android:id="@+id/photoCounter"
                 android:layout_width="wrap_content"
@@ -126,7 +123,6 @@
                 android:visibility="gone"
                 app:tint="@android:color/white" />
         </FrameLayout>
-        <!-- Подвал: Текст и Лайки -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -163,7 +159,7 @@
                     android:layout_width="14dp"
                     android:layout_height="14dp"
                     android:src="@drawable/ic_my_location"
-                    app:tint="@color/accent"
+                    app:tint="@color/black"
                     android:layout_marginEnd="4dp" />
 
                 <TextView
@@ -171,7 +167,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0.0, 0.0"
-                    android:textColor="@color/accent"
+                    android:textColor="@color/black"
                     android:textSize="13sp"
                     android:textStyle="bold" />
             </LinearLayout>

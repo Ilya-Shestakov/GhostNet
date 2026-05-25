@@ -22,7 +22,6 @@ public class OfflineMemoriesAdapter extends RecyclerView.Adapter<OfflineMemories
     private List<OfflinePost> offlinePosts;
     private OnDeleteClickListener deleteListener;
 
-    // Интерфейс для клика по кнопке удаления
     public interface OnDeleteClickListener {
         void onDeleteClick(OfflinePost post);
     }
@@ -51,11 +50,10 @@ public class OfflineMemoriesAdapter extends RecyclerView.Adapter<OfflineMemories
 
         holder.tvTitle.setText(post.title);
 
-        // Загружаем картинку прямо с файла на телефоне
         Glide.with(context)
                 .load(post.mediaUriString)
                 .centerCrop()
-                .placeholder(R.drawable.circle_background) // твоя заглушка
+                .placeholder(R.drawable.circle_background)
                 .into(holder.ivThumbnail);
 
         holder.btnDelete.setOnClickListener(v -> {

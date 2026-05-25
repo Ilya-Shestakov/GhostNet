@@ -30,17 +30,13 @@ public class DialogHelper {
         void onConfirm();
     }
 
-    // --- 1. ОЧЕРЕДЬ ЗАГРУЗКИ (Шторка снизу) ---
     public static void showOfflineQueue(FragmentActivity activity, Object ignored) {
-        // Второй параметр ignored оставил для совместимости вызова, если ты передавал LifecycleOwner
-        // Но для BottomSheet нужен FragmentManager
         OfflineQueueBottomSheet bottomSheet = new OfflineQueueBottomSheet();
         bottomSheet.show(activity.getSupportFragmentManager(), "OfflineQueueTag");
     }
 
-    // --- 2. ВВОД ТЕКСТА (С размытием фона) ---
     public static void showInput(Activity activity, String title, String currentValue, int inputType, int iconRes, OnInputListener listener) {
-        applyBlur(activity, true); // ВКЛЮЧАЕМ БЛЮР
+        applyBlur(activity, true);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_custom, null);
@@ -51,7 +47,6 @@ public class DialogHelper {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // Инициализация
         TextView tvTitle = view.findViewById(R.id.dialogTitle);
         TextView tvMessage = view.findViewById(R.id.dialogMessage);
         TextInputLayout inputLayout = view.findViewById(R.id.inputLayout);
@@ -75,15 +70,13 @@ public class DialogHelper {
             dialog.dismiss();
         });
 
-        // ПРИ ЗАКРЫТИИ УБИРАЕМ БЛЮР
         dialog.setOnDismissListener(d -> applyBlur(activity, false));
 
         dialog.show();
     }
 
-    // --- 3. ПОДТВЕРЖДЕНИЕ (С размытием фона) ---
     public static void showConfirmation(Activity activity, String title, String message, OnConfirmListener listener) {
-        applyBlur(activity, true); // ВКЛЮЧАЕМ БЛЮР
+        applyBlur(activity, true);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_custom, null);
@@ -115,13 +108,11 @@ public class DialogHelper {
             dialog.dismiss();
         });
 
-        // ПРИ ЗАКРЫТИИ УБИРАЕМ БЛЮР
         dialog.setOnDismissListener(d -> applyBlur(activity, false));
 
         dialog.show();
     }
 
-    // --- ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ БЛЮРА (Как в Profile.java) ---
     private static void applyBlur(Activity activity, boolean enable) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             View rootView = activity.getWindow().getDecorView();

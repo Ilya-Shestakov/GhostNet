@@ -9,7 +9,6 @@
     android:fitsSystemWindows="true"
     >
 
-    <!-- Верхняя панель -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/settingsHeader"
         android:layout_width="match_parent"
@@ -60,7 +59,6 @@
             android:orientation="vertical"
             android:paddingHorizontal="20dp">
 
-            <!-- Блок: Аккаунт -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -115,7 +113,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- БЛОК РАЗРЕШЕНИЙ (НОВЫЙ) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -138,7 +135,6 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Микрофон -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -163,7 +159,6 @@
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#1A888888" android:layout_marginHorizontal="16dp"/>
 
-                    <!-- Галерея -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -188,7 +183,6 @@
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#1A888888" android:layout_marginHorizontal="16dp"/>
 
-                    <!-- Уведомления -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -213,7 +207,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Блок: Внешний вид -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -278,7 +271,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Блок: Приложение -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -315,7 +307,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Блок: Поддержка -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -346,7 +337,6 @@
                     android:background="?attr/selectableItemBackground"/>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Блок: Опасная зона -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

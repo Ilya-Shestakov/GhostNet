@@ -1,14 +1,14 @@
 <resources>
-    <string name="app_name">MapMemories</string>
+    <string name="app_name">GhostNet</string>
 
-    <string name="onboarding_title_1">Сохраняй места</string>
-    <string name="onboarding_desc_1">Отмечай на карте моменты, которые хочешь запомнить</string>
+    <string name="onboarding_title_1">Лента!</string>
+    <string name="onboarding_desc_1">Твоя лента — твои правила. Весь контент защищён</string>
 
-    <string name="onboarding_title_2">Исследуй без интернета</string>
-    <string name="onboarding_desc_2">Скачивай карты регионов для путешествий в глуши</string>
+    <string name="onboarding_title_2">Безопастность</string>
+    <string name="onboarding_desc_2">Память под защитой. Сквозное шифрование каждого момента</string>
 
-    <string name="onboarding_title_3">Делись открытиями</string>
-    <string name="onboarding_desc_3">Публикуй свои находки и смотри, где были другие</string>
+    <string name="onboarding_title_3">Интернет?</string>
+    <string name="onboarding_desc_3">Будь на связи всегда. Даже если мир ушел в офлайн</string>
 
     <string name="skip">Пропустить</string>
     <string name="next">Далее</string>

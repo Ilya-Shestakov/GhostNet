@@ -36,7 +36,6 @@
             app:layout_constraintTop_toTopOf="parent"
             android:layout_marginTop="32dp" />
 
-        <!-- Имя пользователя -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/usernameInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -61,7 +60,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Email -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/emailInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -86,7 +84,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Пароль -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/passwordInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -112,7 +109,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Подтверждение пароля -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/confirmPasswordInputLayout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -138,7 +134,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Требования к паролю -->
         <TextView
             android:id="@+id/passwordRequirementsTextView"
             android:layout_width="0dp"
@@ -151,7 +146,6 @@
             app:layout_constraintTop_toBottomOf="@id/confirmPasswordInputLayout"
             android:layout_marginTop="8dp" />
 
-        <!-- Кнопка регистрации -->
         <Button
             android:id="@+id/registerButton"
             android:layout_width="0dp"
@@ -166,7 +160,6 @@
             app:layout_constraintTop_toBottomOf="@id/passwordRequirementsTextView"
             android:layout_marginTop="32dp" />
 
-        <!-- Уже есть аккаунт -->
         <LinearLayout
             android:id="@+id/loginLayout"
             android:layout_width="wrap_content"
@@ -198,7 +191,6 @@
 
         </LinearLayout>
 
-        <!-- Добавь в самый конец ConstraintLayout (перед закрывающим тегом): -->
         <RelativeLayout
             android:id="@+id/overlay"
             android:layout_width="match_parent"

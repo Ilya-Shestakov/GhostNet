@@ -30,7 +30,6 @@
             android:textColor="@color/text_primary"
             android:textStyle="bold"/>
 
-        <!-- Можно добавить вывод "О себе" если хочешь -->
     </LinearLayout>
 
 </LinearLayout>

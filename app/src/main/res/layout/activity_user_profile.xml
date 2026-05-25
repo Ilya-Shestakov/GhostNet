@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/primary">
 
-    <!-- ОСНОВНОЙ КОНТЕНТ (Именно он будет блюриться) -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/mainContentLayout"
         android:layout_width="match_parent"
@@ -20,7 +19,6 @@
             android:background="@android:color/transparent"
             app:elevation="0dp">
 
-            <!-- app:contentScrim делает панель непрозрачной, когда она свернута -->
             <com.google.android.material.appbar.CollapsingToolbarLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -28,7 +26,6 @@
                 app:titleEnabled="false"
                 app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
-                <!-- ВЕСЬ ВЕРХНИЙ КОНТЕНТ ПРОФИЛЯ -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -36,7 +33,6 @@
                     android:paddingTop="?attr/actionBarSize"
                     android:paddingBottom="16dp">
 
-                    <!-- КАРТОЧКА: Аватар слева, Статистика и Кнопки справа -->
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/mainInfoCard"
                         android:layout_width="match_parent"
@@ -52,7 +48,6 @@
                             android:layout_height="wrap_content"
                             android:padding="12dp">
 
-                            <!-- Квадратная аватарка -->
                             <com.google.android.material.card.MaterialCardView
                                 android:id="@+id/avatarCard"
                                 android:layout_width="140dp"
@@ -69,7 +64,6 @@
                                     android:layout_height="match_parent" />
                             </com.google.android.material.card.MaterialCardView>
 
-                            <!-- Индикатор онлайна -->
                             <View
                                 android:id="@+id/onlineIndicator"
                                 android:layout_width="16dp"
@@ -83,7 +77,6 @@
                                 app:layout_constraintBottom_toBottomOf="@id/avatarCard"
                                 app:layout_constraintEnd_toEndOf="@id/avatarCard" />
 
-                            <!-- СТАТИСТИКА -->
                             <LinearLayout
                                 android:id="@+id/statsLayout"
                                 android:layout_width="0dp"
@@ -130,7 +123,6 @@
                                 </LinearLayout>
                             </LinearLayout>
 
-                            <!-- КНОПКИ -->
                             <LinearLayout
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -176,7 +168,6 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
-                    <!-- Имя, Статус, Описание -->
                     <TextView
                         android:id="@+id/profileUsername"
                         android:layout_width="match_parent"
@@ -219,7 +210,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Фиксированный тулбар -->
                 <androidx.appcompat.widget.Toolbar
                     android:id="@+id/toolbar"
                     android:layout_width="match_parent"
@@ -230,7 +220,6 @@
             </com.google.android.material.appbar.CollapsingToolbarLayout>
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- Лента постов -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/userPostsRecyclerView"
             android:layout_width="match_parent"
@@ -251,7 +240,6 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- ОВЕРЛЕЙ УВЕЛИЧЕННОГО ФОТО (Теперь он лежит отдельно от блюра!) -->
     <FrameLayout
         android:id="@+id/expandedContainer"
         android:layout_width="match_parent"
@@ -281,7 +269,6 @@
                 android:layout_height="match_parent" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- КНОПКИ ПОДЕЛИТЬСЯ И СКАЧАТЬ -->
         <LinearLayout
             android:id="@+id/expandedActionsContainer"
             android:layout_width="wrap_content"

@@ -53,7 +53,7 @@ public class PickLocationActivity extends AppCompatActivity {
     private GeoPoint selectedPoint;
     private String selectedAddressText = "";
 
-    private boolean isViewOnly = false; // Флаг режима просмотра
+    private boolean isViewOnly = false;
 
     private static final int REQUEST_LOCATION_PERMISSION = 1;
 
@@ -67,7 +67,6 @@ public class PickLocationActivity extends AppCompatActivity {
 
         initViews();
 
-        // Читаем данные из Intent
         double startLat = getIntent().getDoubleExtra("lat", 0.0);
         double startLng = getIntent().getDoubleExtra("lng", 0.0);
         isViewOnly = getIntent().getBooleanExtra("viewOnly", false);
@@ -75,12 +74,9 @@ public class PickLocationActivity extends AppCompatActivity {
         setupMap(startLat, startLng);
         setupListeners();
 
-        // Если это просмотр - настраиваем UI
         if (isViewOnly) {
             btnConfirmLocation.setVisibility(View.GONE);
             tvSelectedAddress.setText("Просмотр местоположения");
-            // Можно скрыть кнопку поиска себя, если она не нужна в просмотре
-            // fabMyLocation.setVisibility(View.GONE);
         }
 
         checkLocationPermissions();
@@ -124,19 +120,16 @@ public class PickLocationActivity extends AppCompatActivity {
 
         IMapController mapController = mapView.getController();
 
-        // Логика установки начальной точки
         if (startLat != 0.0 && startLng != 0.0) {
             GeoPoint startPoint = new GeoPoint(startLat, startLng);
             mapController.setZoom(17.0);
             mapController.setCenter(startPoint);
-            updateSelectedLocation(startPoint); // Ставим маркер сразу
+            updateSelectedLocation(startPoint);
         } else {
-            // Если координат нет - Москва
             mapController.setZoom(15.0);
             mapController.setCenter(new GeoPoint(55.7558, 37.6173));
         }
 
-        // Если НЕ только просмотр - разрешаем кликать по карте
         if (!isViewOnly) {
             MapEventsReceiver mReceive = new MapEventsReceiver() {
                 @Override
@@ -153,7 +146,6 @@ public class PickLocationActivity extends AppCompatActivity {
             mapView.getOverlays().add(new MapEventsOverlay(mReceive));
         }
 
-        // Слой "Где я"
         GpsMyLocationProvider provider = new GpsMyLocationProvider(this);
         provider.addLocationSource(LocationManager.GPS_PROVIDER);
         provider.addLocationSource(LocationManager.NETWORK_PROVIDER);
@@ -161,7 +153,6 @@ public class PickLocationActivity extends AppCompatActivity {
         myLocationOverlay = new MyLocationNewOverlay(provider, mapView);
         myLocationOverlay.setDrawAccuracyEnabled(true);
 
-        // Если координат не было передано, при первом фиксе летим к юзеру
         if (startLat == 0.0 && startLng == 0.0) {
             myLocationOverlay.runOnFirstFix(() -> runOnUiThread(() -> {
                 if (myLocationOverlay.getMyLocation() != null) {
@@ -275,8 +266,7 @@ public class PickLocationActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                     REQUEST_LOCATION_PERMISSION);
         } else {
-            if (!isLocationEnabled() && !isViewOnly) { // Предлагаем включить GPS только если мы не просто смотрим
-                // showSettingsAlert();
+            if (!isLocationEnabled() && !isViewOnly) {
             }
         }
     }

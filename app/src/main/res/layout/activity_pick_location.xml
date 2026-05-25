@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".Lenta.PickLocationActivity">
 
-    <!-- Карта -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="0dp"
@@ -16,7 +15,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Затемнение сверху для тулбара или просто кнопки назад -->
     <FrameLayout
         android:id="@+id/toolbarContainer"
         android:layout_width="match_parent"
@@ -42,7 +40,6 @@
             android:textStyle="bold" />
     </FrameLayout>
 
-    <!-- Кнопка "Мое местоположение" -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabMyLocation"
         android:layout_width="wrap_content"
@@ -55,7 +52,6 @@
         app:layout_constraintBottom_toTopOf="@+id/cardConfirm"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Карточка подтверждения выбора -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardConfirm"
         android:layout_width="match_parent"

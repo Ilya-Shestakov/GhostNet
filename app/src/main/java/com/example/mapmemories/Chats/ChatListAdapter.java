@@ -35,7 +35,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
 
     public interface OnChatInteractionListener {
         void onChatClick(ChatListItem item);
-        void onChatLongClick(ChatListItem item, View anchorView); // Передаем View для позиционирования меню
+        void onChatLongClick(ChatListItem item, View anchorView);
     }
 
     public ChatListAdapter(Context context, List<ChatListItem> chatList, String currentUserId, OnChatInteractionListener listener) {
@@ -95,11 +95,9 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 });
 
         if (item.lastMessage != null) {
-            // 1. ЕДИНОРАЗОВО РАСШИФРОВЫВАЕМ ТЕКСТ
             String decryptedText = CryptoHelper.decrypt(item.lastMessage.getText());
             String previewText = "";
 
-            // 2. ФОРМИРУЕМ БАЗОВОЕ ПРЕВЬЮ
             if ("image".equals(item.lastMessage.getType())) {
                 previewText = (decryptedText != null && !decryptedText.isEmpty()) ? "📷 " + decryptedText : "📷 Фотография";
             } else if ("post".equals(item.lastMessage.getType())) {
@@ -110,9 +108,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 previewText = decryptedText != null ? decryptedText : "";
             }
 
-            // 3. ДОБАВЛЯЕМ ЛОГИКУ "СВОЕ/ЧУЖОЕ"
             if (item.lastMessage.getSenderId().equals(currentUserId)) {
-                // Если сообщение отправили МЫ -> добавляем приставку "Вы: "
                 previewText = "Вы: " + previewText;
 
                 holder.readStatus.setVisibility(View.VISIBLE);
@@ -120,20 +116,18 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 holder.previewText.setTypeface(null, Typeface.NORMAL);
                 holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
 
-                // Галочки прочтения
                 if (item.lastMessage.isRead()) {
                     holder.readStatus.setImageResource(R.drawable.ic_check_double);
                 } else {
                     holder.readStatus.setImageResource(R.drawable.ic_check_single);
                 }
             } else {
-                // Если сообщение от СОБЕСЕДНИКА
                 holder.readStatus.setVisibility(View.GONE);
 
                 if (item.unreadCount > 0) {
                     holder.unreadBadge.setVisibility(View.VISIBLE);
                     holder.unreadBadge.setText(String.valueOf(item.unreadCount));
-                    holder.previewText.setTypeface(null, Typeface.BOLD); // Делаем жирным, если не прочитано
+                    holder.previewText.setTypeface(null, Typeface.BOLD);
                     holder.previewText.setTextColor(context.getResources().getColor(R.color.text_primary));
                 } else {
                     holder.unreadBadge.setVisibility(View.GONE);
@@ -142,15 +136,13 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 }
             }
 
-            // Устанавливаем итоговый расшифрованный текст
             holder.previewText.setText(previewText);
 
-            // Время сообщения
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
             holder.timeText.setText(sdf.format(item.lastMessage.getTimestamp()));
 
         } else {
-            // Если чат абсолютно пуст
+
             holder.previewText.setText("Нет сообщений");
             holder.timeText.setText("");
             holder.readStatus.setVisibility(View.GONE);

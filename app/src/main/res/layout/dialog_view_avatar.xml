@@ -5,13 +5,12 @@
     android:layout_height="wrap_content"
     app:cardCornerRadius="16dp"
     app:cardElevation="8dp"
-    app:cardBackgroundColor="@color/surface_dark"> <!-- Твой цвет фона карточек -->
+    app:cardBackgroundColor="@color/surface_dark">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Большое фото (квадратное) -->
         <ImageView
             android:id="@+id/fullAvatarImage"
             android:layout_width="match_parent"
@@ -23,7 +22,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Кнопка редактирования (карандаш) -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btnEditAvatar"
             android:layout_width="wrap_content"

@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/primary_dark">
 
-    <!-- ViewPager для слайдов -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/onboardingViewPager"
         android:layout_width="0dp"
@@ -16,7 +15,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Свой индикатор из точек -->
     <LinearLayout
         android:id="@+id/indicatorLayout"
         android:layout_width="wrap_content"
@@ -28,7 +26,6 @@
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginBottom="20dp">
 
-        <!-- Точки будут добавляться динамически из кода -->
     </LinearLayout>
 
     <LinearLayout

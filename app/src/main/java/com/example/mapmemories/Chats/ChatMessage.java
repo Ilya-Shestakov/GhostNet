@@ -8,21 +8,18 @@ public class ChatMessage {
     private String imageUrl;
     private String postId;
     private long timestamp;
-    private String type; // "text", "image", "post"
+    private String type;
     private String deletedBy;
     private boolean read;
 
-    // --- НОВЫЕ ПОЛЯ ДЛЯ ОТВЕТА ---
     private String replyMessageId;
     private String replySenderId;
     private String replyText;
     private String reaction;
 
     public ChatMessage() {
-        // Пустой конструктор для Firebase
     }
 
-    // Конструктор для текста
     public ChatMessage(String senderId, String receiverId, String text, long timestamp, String type) {
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -32,7 +29,6 @@ public class ChatMessage {
         this.read = false;
     }
 
-    // Конструктор для картинки
     public ChatMessage(String senderId, String receiverId, String imageUrl, String text, long timestamp, String type) {
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -43,7 +39,6 @@ public class ChatMessage {
         this.read = false;
     }
 
-    // Конструктор для поста
     public ChatMessage(String senderId, String receiverId, String postId, long timestamp) {
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -86,7 +81,6 @@ public class ChatMessage {
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
 
-    // --- ГЕТТЕРЫ И СЕТТЕРЫ ДЛЯ ОТВЕТА ---
     public String getReplyMessageId() { return replyMessageId; }
     public void setReplyMessageId(String replyMessageId) { this.replyMessageId = replyMessageId; }
 

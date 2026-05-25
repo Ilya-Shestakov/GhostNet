@@ -18,7 +18,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Контейнер для медиа -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="220dp">
@@ -30,7 +29,6 @@
                 android:scaleType="centerCrop"
                 android:src="@color/text_secondary" />
 
-            <!-- Иконка видео -->
             <ImageView
                 android:id="@+id/videoIcon"
                 android:layout_width="40dp"
@@ -39,10 +37,9 @@
                 android:src="@drawable/ic_setting"
                 android:visibility="gone"
                 app:tint="@android:color/white" />
-            <!-- Заменил ic_setting на ic_play_circle, так логичнее -->
+
         </FrameLayout>
 
-        <!-- Текстовая часть -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
