@@ -309,21 +309,41 @@ public class ChatListFragment extends Fragment {
     }
 
     private void fetchChatDetails(String chatId, String otherUserId, DataSnapshot messagesSnapshot) {
+
+        if (currentUserId == null) return;
+
         ChatMessage lastMsg = null;
         int unreadCount = 0;
 
         for (DataSnapshot msgSnap : messagesSnapshot.getChildren()) {
-            ChatMessage msg = msgSnap.getValue(ChatMessage.class);
-            if (msg != null && (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId))) {
-                lastMsg = msg;
-                if (msg.getReceiverId().equals(currentUserId) && !msg.isRead()) {
-                    unreadCount++;
+            try {
+                ChatMessage msg = msgSnap.getValue(ChatMessage.class);
+
+                // Проверяем всё на null перед сравнением
+                if (msg != null) {
+                    String deletedBy = msg.getDeletedBy();
+
+                    // Безопасная проверка: не удалено ли сообщение нами
+                    if (deletedBy == null || !deletedBy.equals(currentUserId)) {
+                        lastMsg = msg;
+
+                        // Безопасный подсчет непрочитанных
+                        String receiverId = msg.getReceiverId();
+                        if (currentUserId != null && currentUserId.equals(msg.getReceiverId()) && !msg.isRead()) {
+                            unreadCount++;
+                        }
+                    }
                 }
+            } catch (Exception e) {
+                android.util.Log.e("CHAT_LIST_ERR", "Ошибка парсинга сообщения: " + e.getMessage());
             }
         }
 
         final ChatMessage finalLastMsg = lastMsg;
         final int finalUnreadCount = unreadCount;
+
+        // Проверяем, что ID собеседника не null
+        if (otherUserId == null) return;
 
         usersRef.child(otherUserId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override

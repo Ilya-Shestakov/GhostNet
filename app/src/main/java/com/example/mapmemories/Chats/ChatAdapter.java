@@ -187,15 +187,51 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         }
     }
 
+    private String getDecryptedContent(ChatMessage message) {
+        boolean isMine = currentUserId != null && currentUserId.equals(message.getSenderId());
+        String dataToDecrypt;
+
+        if (isMine) {
+            // Если моё — берем textSender, если его нет — text
+            dataToDecrypt = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
+        } else {
+            // Если чужое — только text
+            dataToDecrypt = message.getText();
+        }
+
+        return CryptoHelper.decrypt(dataToDecrypt);
+    }
+
+
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+
         ChatMessage message = messages.get(position);
-        boolean isMine = message.getSenderId().equals(currentUserId);
+        String senderId = message.getSenderId();
+        boolean isMine = currentUserId != null && currentUserId.equals(senderId);
         boolean isHighlighted = message.getMessageId() != null && message.getMessageId().equals(highlightedMessageId);
         boolean isSelected = message.getMessageId() != null && selectedMessageIds.contains(message.getMessageId());
         boolean isUploading = message.getMessageId() != null && uploadingMessageIds.contains(message.getMessageId());
 
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
+
+
+        String encryptedData;
+        if (message.getSenderId().equals(currentUserId)) {
+            encryptedData = message.getTextSender();
+            if (encryptedData == null) encryptedData = message.getText();
+        } else {
+            encryptedData = message.getText();
+        }
+
+        String rawEncrypted;
+        if (isMine) {
+            rawEncrypted = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
+        } else {
+            rawEncrypted = message.getText();
+        }
+
+        holder.tvTextMessage.setText(CryptoHelper.decrypt(rawEncrypted));
 
         if (isSelected) {
             holder.itemView.setBackgroundColor(Color.parseColor("#1AE27950"));
@@ -261,6 +297,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 else replyText = "Вложение";
 
             }
+
             holder.tvQuotedText.setText(CryptoHelper.decrypt(replyText));
             holder.replyQuotedLayout.setOnClickListener(v -> { if (actionListener != null) actionListener.onQuoteClicked(message.getReplyMessageId()); });
         }
@@ -271,7 +308,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         if ("text".equals(message.getType())) {
             holder.tvTextMessage.setVisibility(View.VISIBLE);
-            holder.tvTextMessage.setText(CryptoHelper.decrypt(message.getText()));
+            holder.tvTextMessage.setText(getDecryptedContent(message));
         } else if ("image".equals(message.getType())) {
             holder.imageContainer.setVisibility(View.VISIBLE);
             String currentUrl = (String) holder.chatAttachedImage.getTag();
@@ -281,7 +318,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             }
             if (message.getText() != null && !message.getText().isEmpty()) {
                 holder.tvTextMessage.setVisibility(View.VISIBLE);
-                holder.tvTextMessage.setText(CryptoHelper.decrypt(message.getText()));
+                holder.tvTextMessage.setText(getDecryptedContent(message));
             }
 
             if (isUploading) {

@@ -119,7 +119,7 @@ public class Setting extends AppCompatActivity {
         mainContentLayout = findViewById(R.id.mainContentLayout);
         btnBack = findViewById(R.id.btnBack);
         btnChangePassword = findViewById(R.id.btnChangePassword);
-        btnPrivacy = findViewById(R.id.btnPrivacy);
+//        btnPrivacy = findViewById(R.id.btnPrivacy);
         btnTextSize = findViewById(R.id.btnTextSize);
         btnClearCache = findViewById(R.id.btnClearCache);
         btnSupport = findViewById(R.id.btnSupport);
@@ -314,7 +314,7 @@ public class Setting extends AppCompatActivity {
     private void setupClickListeners() {
         btnBack.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); Close(); });
         btnChangePassword.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); sendPasswordResetEmail(); });
-        btnPrivacy.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showPrivacyDialog(); });
+        //btnPrivacy.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showPrivacyDialog(); });
 
         switchTheme.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
@@ -443,7 +443,47 @@ public class Setting extends AppCompatActivity {
     }
 
     private void showDeleteAccountDialog() {
-        new MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories).setTitle("Удаление аккаунта").setMessage("Это действие необратимо. Вы уверены?").setPositiveButton("Удалить", (dialog, which) -> Toast.makeText(this, "Функция в разработке", Toast.LENGTH_LONG).show()).setNegativeButton("Отмена", null).show();
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories)
+                .setTitle("Удаление аккаунта")
+                .setMessage("Это действие необратимо. Все ваши данные, включая ключи безопасности, будут удалены. Вы уверены?")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    deleteUserAccount();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void deleteUserAccount() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (user != null) {
+            String uid = user.getUid();
+
+            FirebaseDatabase.getInstance().getReference("users").child(uid)
+                    .removeValue()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            user.delete()
+                                    .addOnCompleteListener(authTask -> {
+                                        if (authTask.isSuccessful()) {
+                                            Toast.makeText(this, "Аккаунт успешно удален", Toast.LENGTH_SHORT).show();
+
+                                            Intent intent = new Intent(this, com.example.mapmemories.LogRegStart.RegisterActivity.class);
+                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                            startActivity(intent);
+                                            finish();
+                                        } else {
+                                            Toast.makeText(this, "Ошибка: нужно перезайти в приложение перед удалением", Toast.LENGTH_LONG).show();
+                                            FirebaseAuth.getInstance().signOut();
+                                            startActivity(new Intent(this, com.example.mapmemories.LogRegStart.LoginActivity.class));
+                                            finish();
+                                        }
+                                    });
+                        } else {
+                            Toast.makeText(this, "Ошибка при очистке данных базы", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
     }
 
     private void clearAppCache() {

@@ -11,6 +11,7 @@ public class ChatMessage {
     private String type;
     private String deletedBy;
     private boolean read;
+    private String textSender;
 
     private String replyMessageId;
     private String replySenderId;
@@ -59,6 +60,9 @@ public class ChatMessage {
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+
+    public String getTextSender() { return textSender; }
+    public void setTextSender(String textSender) { this.textSender = textSender; }
 
     public String getReaction() { return reaction; }
     public void setReaction(String reaction) { this.reaction = reaction; }

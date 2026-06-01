@@ -69,6 +69,7 @@ import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -78,6 +79,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.io.File;
 import java.io.InputStream;
+import java.security.KeyStore;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -100,6 +102,8 @@ public class ChatActivity extends AppCompatActivity {
     private String editingMessageId = null;
     private Uri selectedImageUri = null;
     private ChatMessage replyingToMessage = null;
+
+    private String myPublicKey;
 
     private FrameLayout galleryContainer;
     private androidx.viewpager2.widget.ViewPager2 galleryViewPager;
@@ -144,6 +148,8 @@ public class ChatActivity extends AppCompatActivity {
     private ChildEventListener messagesListener;
     private Handler typingHandler = new Handler();
     private Runnable typingRunnable;
+
+    private String targetPublicKey;
 
     private ActivityResultLauncher<String> pickImageLauncher;
     private ActivityResultLauncher<String> requestMicLauncher;
@@ -202,6 +208,22 @@ public class ChatActivity extends AppCompatActivity {
             return WindowInsetsCompat.CONSUMED;
         });
 
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            // Замени "GhostNet_RSA_Key" на свой алиас, если ты его менял
+            if (ks.containsAlias("GhostNet_RSA_Key")) {
+                android.util.Log.d("CRYPTO_CHECK", "Ключ на месте, всё ок!");
+//                Toast.makeText(this, "Ключ на месте, всё ок!", Toast.LENGTH_LONG).show();
+            } else {
+                android.util.Log.e("CRYPTO_CHECK", "КЛЮЧА НЕТ! Нужно перерегистрироваться.");
+                // Можно даже тост вывести для наглядности
+//                Toast.makeText(this, "Критическая ошибка: ключ безопасности не найден!", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         targetUserId = getIntent().getStringExtra("targetUserId");
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
@@ -228,6 +250,7 @@ public class ChatActivity extends AppCompatActivity {
         loadTargetUserData();
         loadMessagesOptimized();
         loadPinnedMessage();
+        loadMyPublicKey();
 
         clearNotification();
 
@@ -308,6 +331,15 @@ public class ChatActivity extends AppCompatActivity {
         btnGalleryMenu = findViewById(R.id.btnGalleryMenu);
 
         btnGalleryClose.setOnClickListener(v -> closeGallery());
+
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            java.security.cert.Certificate cert = ks.getCertificate("GhostNet_RSA_Key");
+            if (cert != null) {
+                myPublicKey = android.util.Base64.encodeToString(cert.getPublicKey().getEncoded(), android.util.Base64.NO_WRAP);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
 
         setupGlobalPlayer();
 
@@ -431,7 +463,7 @@ public class ChatActivity extends AppCompatActivity {
                 if (editingMessageId != null) {
                     String editedId = editingMessageId;
                     Map<String, Object> updates = new HashMap<>();
-                    updates.put("text", CryptoHelper.encrypt(text));
+                    updates.put("text", CryptoHelper.encryptForRecipient(text, targetPublicKey));
 
                     if (replyingToMessage != null) {
                         updates.put("replyMessageId", replyingToMessage.getMessageId());
@@ -458,6 +490,36 @@ public class ChatActivity extends AppCompatActivity {
                 updateInputUI();
             }
         });
+    }
+
+    private void syncKeysIfNeeded() {
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+
+            // 1. Проверяем, есть ли вообще ключ в телефоне
+            if (!ks.containsAlias("GhostNet_RSA_Key")) {
+                // Если ключа нет (например, удалили кэш), создаем новый
+                myPublicKey = CryptoHelper.generateKeyPair();
+                FirebaseDatabase.getInstance().getReference("users").child(currentUserId)
+                        .child("publicKey").setValue(myPublicKey);
+                return;
+            }
+
+            // 2. Вытаскиваем текущий публичный ключ из Keystore
+            java.security.cert.Certificate cert = ks.getCertificate("GhostNet_RSA_Key");
+            String currentLocalPubKey = android.util.Base64.encodeToString(cert.getPublicKey().getEncoded(), android.util.Base64.NO_WRAP);
+
+            // 3. Сравниваем с тем, что в базе (myPublicKey уже должен быть загружен из loadMyPublicKey)
+            if (myPublicKey != null && !myPublicKey.equals(currentLocalPubKey)) {
+                android.util.Log.w("GHOST_CRYPTO", "Ключи не совпадают! Обновляю базу...");
+                myPublicKey = currentLocalPubKey;
+                FirebaseDatabase.getInstance().getReference("users").child(currentUserId)
+                        .child("publicKey").setValue(myPublicKey);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void closeGlobalPlayer() {
@@ -519,7 +581,7 @@ public class ChatActivity extends AppCompatActivity {
 
         ChatMessage tempMsg = new ChatMessage(
                 currentUserId, targetUserId,
-                fileUri.toString(), CryptoHelper.encrypt(fileName),
+                fileUri.toString(), CryptoHelper.encryptForRecipient(fileName, targetPublicKey),
                 System.currentTimeMillis(),
                 "file");
         tempMsg.setMessageId(tempMessageId);
@@ -544,7 +606,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (!isFinishing() && !isDestroyed()) {
                         String messageId = chatRef.push().getKey();
                         if (messageId != null) {
-                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encrypt(fileName), System.currentTimeMillis(), "file");
+                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encryptForRecipient(fileName, targetPublicKey), System.currentTimeMillis(), "file");
                             message.setMessageId(messageId);
                             attachReplyDataToMessage(message);
                             chatRef.child(messageId).setValue(message);
@@ -1535,19 +1597,49 @@ public class ChatActivity extends AppCompatActivity {
 
     private void sendTextMessage(String text) {
         String messageId = chatRef.push().getKey();
-        if (messageId != null) {
-            ChatMessage message = new ChatMessage(currentUserId, targetUserId, CryptoHelper.encrypt(text), System.currentTimeMillis(), "text");
+
+        String myRealKey = CryptoHelper.getLocalPublicKey();
+
+        if (messageId != null && targetPublicKey != null && myRealKey != null) {
+
+            String encForReceiver = CryptoHelper.encryptForRecipient(text, targetPublicKey);
+
+            String encForSender = CryptoHelper.encryptForRecipient(text, myRealKey);
+
+            ChatMessage message = new ChatMessage(currentUserId, targetUserId, encForReceiver, System.currentTimeMillis(), "text");
+            message.setTextSender(encForSender);
             message.setMessageId(messageId);
+
             attachReplyDataToMessage(message);
             chatRef.child(messageId).setValue(message);
             closeReplyPreview();
+        } else {
+            if (myRealKey == null) Toast.makeText(this, "Ошибка: локальный ключ не найден", Toast.LENGTH_SHORT).show();
+            if (targetPublicKey == null) Toast.makeText(this, "Ошибка: ключ собеседника не загружен", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void loadMyPublicKey() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        FirebaseDatabase.getInstance().getReference("users").child(user.getUid()).child("publicKey")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        myPublicKey = snapshot.getValue(String.class);
+                        // ПРОВЕРЯЕМ СИНХРОНИЗАЦИ
+                        syncKeysIfNeeded();
+                    }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
     }
 
     private void uploadImageToCloudinaryAndSend(Uri imageUri, String caption) {
         String tempMessageId = "temp_" + System.currentTimeMillis();
 
-        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), CryptoHelper.encrypt(caption), System.currentTimeMillis(), "image");
+        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), CryptoHelper.encryptForRecipient(caption, targetPublicKey), System.currentTimeMillis(), "image");
         tempMsg.setMessageId(tempMessageId);
         attachReplyDataToMessage(tempMsg);
 
@@ -1575,7 +1667,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (!isFinishing() && !isDestroyed()) {
                         String messageId = chatRef.push().getKey();
                         if (messageId != null) {
-                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encrypt(caption), System.currentTimeMillis(), "image");
+                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encryptForRecipient(caption, targetPublicKey), System.currentTimeMillis(), "image");
                             message.setMessageId(messageId);
 
                             if (replyingToMessage != null) {
@@ -1676,12 +1768,15 @@ public class ChatActivity extends AppCompatActivity {
      * |-----------------------------------------------------------------------| */
 
     private void loadTargetUserData() {
+
         statusListener = targetUserRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists() && !isDestroyed()) {
                     String username = snapshot.child("username").getValue(String.class);
                     String avatarUrl = snapshot.child("profileImageUrl").getValue(String.class);
+
+                    targetPublicKey = snapshot.child("publicKey").getValue(String.class);
 
                     isTargetUserHidden = snapshot.child("privacy").child("hide_online").exists() &&
                             Boolean.TRUE.equals(snapshot.child("privacy").child("hide_online").getValue(Boolean.class));
@@ -1731,15 +1826,23 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                 ChatMessage msg = snapshot.getValue(ChatMessage.class);
-                if (msg != null && (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId))) {
-                    if (msg.getReceiverId().equals(currentUserId) && !msg.isRead()) {
-                        snapshot.getRef().child("read").setValue(true);
-                        msg.setRead(true);
+
+                if (msg != null) {
+                    String deletedBy = msg.getDeletedBy();
+                    String receiverId = msg.getReceiverId();
+
+                    if (deletedBy == null || (currentUserId != null && !deletedBy.equals(currentUserId))) {
+
+                        if (currentUserId != null && currentUserId.equals(receiverId) && !msg.isRead()) {
+                            snapshot.getRef().child("read").setValue(true);
+                            msg.setRead(true);
+                        }
+
+                        messageList.add(msg);
+                        chatAdapter.notifyItemInserted(messageList.size() - 1);
+                        chatRecyclerView.scrollToPosition(messageList.size() - 1);
+                        emptyChatContainer.setVisibility(View.GONE);
                     }
-                    messageList.add(msg);
-                    chatAdapter.notifyItemInserted(messageList.size() - 1);
-                    chatRecyclerView.scrollToPosition(messageList.size() - 1);
-                    emptyChatContainer.setVisibility(View.GONE);
                 }
             }
             @Override
@@ -1760,6 +1863,7 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 }
             }
+
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
                 String removedId = snapshot.getKey();

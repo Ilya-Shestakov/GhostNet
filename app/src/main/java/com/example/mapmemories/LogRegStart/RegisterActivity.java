@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mapmemories.Lenta.MainActivity;
 import com.example.mapmemories.R;
+import com.example.mapmemories.systemHelpers.CryptoHelper;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -141,6 +142,7 @@ public class RegisterActivity extends AppCompatActivity {
             mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
+
                             FirebaseUser firebaseUser = mAuth.getCurrentUser();
 
                             if (firebaseUser != null) {
@@ -152,10 +154,19 @@ public class RegisterActivity extends AppCompatActivity {
                                 firebaseUser.updateProfile(profileUpdates)
                                         .addOnCompleteListener(profileTask -> {
                                             if (profileTask.isSuccessful()) {
+
+                                                String publicKeyBase64 = "";
+                                                try {
+                                                    publicKeyBase64 = CryptoHelper.generateKeyPair();
+                                                } catch (Exception e) {
+                                                    e.printStackTrace();
+                                                }
+
                                                 java.util.Map<String, Object> userMap = new java.util.HashMap<>();
                                                 userMap.put("username", username);
                                                 userMap.put("email", email);
                                                 userMap.put("phone", "");
+                                                userMap.put("publicKey", publicKeyBase64);
                                                 userMap.put("about", "Привет! Я новый пользователь.");
                                                 userMap.put("profileImageUrl", "");
                                                 userMap.put("joinDate", System.currentTimeMillis());

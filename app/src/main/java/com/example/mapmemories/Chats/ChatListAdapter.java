@@ -95,20 +95,39 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 });
 
         if (item.lastMessage != null) {
-            String decryptedText = CryptoHelper.decrypt(item.lastMessage.getText());
+            // 1. Определяем, какое поле расшифровывать (свое или чужое)
+            String rawEncrypted;
+            String senderId = item.lastMessage.getSenderId();
+
+            if (senderId != null && senderId.equals(currentUserId)) {
+                // Если последнее сообщение отправили МЫ - берем textSender
+                rawEncrypted = item.lastMessage.getTextSender();
+                // Если вдруг поле пустое (для старых сообщений), берем обычный text
+                if (rawEncrypted == null) rawEncrypted = item.lastMessage.getText();
+            } else {
+                // Если последнее сообщение прислали НАМ - берем text
+                rawEncrypted = item.lastMessage.getText();
+            }
+
+            // 2. Дешифруем
+            String decryptedText = CryptoHelper.decrypt(rawEncrypted);
             String previewText = "";
 
+            // 3. Формируем превью в зависимости от типа
             if ("image".equals(item.lastMessage.getType())) {
                 previewText = (decryptedText != null && !decryptedText.isEmpty()) ? "📷 " + decryptedText : "📷 Фотография";
             } else if ("post".equals(item.lastMessage.getType())) {
                 previewText = "🗺️ Пост";
             } else if ("voice".equals(item.lastMessage.getType())) {
                 previewText = "🎤 Голосовое сообщение";
+            } else if ("file".equals(item.lastMessage.getType())) {
+                previewText = "📁 Документ";
             } else {
                 previewText = decryptedText != null ? decryptedText : "";
             }
 
-            if (item.lastMessage.getSenderId().equals(currentUserId)) {
+            // 4. Добавляем префикс "Вы: ", если отправитель - текущий юзер
+            if (senderId != null && senderId.equals(currentUserId)) {
                 previewText = "Вы: " + previewText;
 
                 holder.readStatus.setVisibility(View.VISIBLE);
@@ -122,6 +141,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                     holder.readStatus.setImageResource(R.drawable.ic_check_single);
                 }
             } else {
+                // Логика для входящих сообщений (непрочитанные и т.д.)
                 holder.readStatus.setVisibility(View.GONE);
 
                 if (item.unreadCount > 0) {
