@@ -154,10 +154,13 @@ public class RegisterActivity extends AppCompatActivity {
                                 firebaseUser.updateProfile(profileUpdates)
                                         .addOnCompleteListener(profileTask -> {
                                             if (profileTask.isSuccessful()) {
-
+                                                // 1. Сначала получаем UID
+                                                String uid = firebaseUser.getUid();
                                                 String publicKeyBase64 = "";
+
                                                 try {
-                                                    publicKeyBase64 = CryptoHelper.generateKeyPair();
+                                                    // 2. Генерируем ключи, используя UID как алиас
+                                                    publicKeyBase64 = CryptoHelper.generateKeyPair(uid);
                                                 } catch (Exception e) {
                                                     e.printStackTrace();
                                                 }
@@ -166,7 +169,7 @@ public class RegisterActivity extends AppCompatActivity {
                                                 userMap.put("username", username);
                                                 userMap.put("email", email);
                                                 userMap.put("phone", "");
-                                                userMap.put("publicKey", publicKeyBase64);
+                                                userMap.put("publicKey", publicKeyBase64); // Ключ улетает в базу
                                                 userMap.put("about", "Привет! Я новый пользователь.");
                                                 userMap.put("profileImageUrl", "");
                                                 userMap.put("joinDate", System.currentTimeMillis());
@@ -175,7 +178,7 @@ public class RegisterActivity extends AppCompatActivity {
                                                 userMap.put("likesCount", 0);
 
                                                 FirebaseDatabase.getInstance().getReference("users")
-                                                        .child(firebaseUser.getUid())
+                                                        .child(uid)
                                                         .setValue(userMap)
                                                         .addOnCompleteListener(dbTask -> {
                                                             showLoading(false);
@@ -184,8 +187,7 @@ public class RegisterActivity extends AppCompatActivity {
                                                                 startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                                                                 finish();
                                                             } else {
-                                                                String dbError = dbTask.getException() != null ? dbTask.getException().getMessage() : "Неизвестная ошибка БД";
-                                                                Toast.makeText(RegisterActivity.this, "Ошибка БД: " + dbError, Toast.LENGTH_LONG).show();
+                                                                // ошибка
                                                             }
                                                         });
                                             } else {

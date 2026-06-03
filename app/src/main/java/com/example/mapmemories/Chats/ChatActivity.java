@@ -211,14 +211,11 @@ public class ChatActivity extends AppCompatActivity {
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
-            // Замени "GhostNet_RSA_Key" на свой алиас, если ты его менял
-            if (ks.containsAlias("GhostNet_RSA_Key")) {
-                android.util.Log.d("CRYPTO_CHECK", "Ключ на месте, всё ок!");
-//                Toast.makeText(this, "Ключ на месте, всё ок!", Toast.LENGTH_LONG).show();
+            String myAlias = "GhostNet_Key_" + FirebaseAuth.getInstance().getUid();
+            if (ks.containsAlias(myAlias)) {
+                android.util.Log.d("CRYPTO_CHECK", "Ключ для текущего аккаунта на месте!");
             } else {
-                android.util.Log.e("CRYPTO_CHECK", "КЛЮЧА НЕТ! Нужно перерегистрироваться.");
-                // Можно даже тост вывести для наглядности
-//                Toast.makeText(this, "Критическая ошибка: ключ безопасности не найден!", Toast.LENGTH_LONG).show();
+                android.util.Log.e("CRYPTO_CHECK", "КЛЮЧА НЕТ для этого аккаунта!");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -497,20 +494,18 @@ public class ChatActivity extends AppCompatActivity {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
 
-            // 1. Проверяем, есть ли вообще ключ в телефоне
-            if (!ks.containsAlias("GhostNet_RSA_Key")) {
-                // Если ключа нет (например, удалили кэш), создаем новый
-                myPublicKey = CryptoHelper.generateKeyPair();
+            String myAlias = "GhostNet_Key_" + currentUserId;
+
+            if (!ks.containsAlias(myAlias)) {
+                myPublicKey = CryptoHelper.generateKeyPair(currentUserId);
                 FirebaseDatabase.getInstance().getReference("users").child(currentUserId)
                         .child("publicKey").setValue(myPublicKey);
                 return;
             }
 
-            // 2. Вытаскиваем текущий публичный ключ из Keystore
-            java.security.cert.Certificate cert = ks.getCertificate("GhostNet_RSA_Key");
+            java.security.cert.Certificate cert = ks.getCertificate(myAlias);
             String currentLocalPubKey = android.util.Base64.encodeToString(cert.getPublicKey().getEncoded(), android.util.Base64.NO_WRAP);
 
-            // 3. Сравниваем с тем, что в базе (myPublicKey уже должен быть загружен из loadMyPublicKey)
             if (myPublicKey != null && !myPublicKey.equals(currentLocalPubKey)) {
                 android.util.Log.w("GHOST_CRYPTO", "Ключи не совпадают! Обновляю базу...");
                 myPublicKey = currentLocalPubKey;
@@ -596,9 +591,13 @@ public class ChatActivity extends AppCompatActivity {
             try {
                 InputStream inputStream = getContentResolver().openInputStream(fileUri);
                 Map<String, Object> options = new HashMap<>();
-                options.put("resource_type", "auto"); // auto позволяет грузить PDF, ZIP, DOCX и тд.
+                options.put("resource_type", "auto");
                 Map uploadResult = cloudinary.uploader().upload(inputStream, options);
                 String secureUrl = (String) uploadResult.get("secure_url");
+
+                String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
+                String encForReceiver = CryptoHelper.encryptForRecipient(fileName, targetPublicKey);
+                String encForSender = CryptoHelper.encryptForRecipient(fileName, myRealKey);
 
                 runOnUiThread(() -> {
                     uploadTasks.remove(tempMessageId);
@@ -607,6 +606,7 @@ public class ChatActivity extends AppCompatActivity {
                         String messageId = chatRef.push().getKey();
                         if (messageId != null) {
                             ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encryptForRecipient(fileName, targetPublicKey), System.currentTimeMillis(), "file");
+                            message.setTextSender(encForSender);
                             message.setMessageId(messageId);
                             attachReplyDataToMessage(message);
                             chatRef.child(messageId).setValue(message);
@@ -1598,12 +1598,10 @@ public class ChatActivity extends AppCompatActivity {
     private void sendTextMessage(String text) {
         String messageId = chatRef.push().getKey();
 
-        String myRealKey = CryptoHelper.getLocalPublicKey();
+        String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
 
         if (messageId != null && targetPublicKey != null && myRealKey != null) {
-
             String encForReceiver = CryptoHelper.encryptForRecipient(text, targetPublicKey);
-
             String encForSender = CryptoHelper.encryptForRecipient(text, myRealKey);
 
             ChatMessage message = new ChatMessage(currentUserId, targetUserId, encForReceiver, System.currentTimeMillis(), "text");
@@ -1615,7 +1613,7 @@ public class ChatActivity extends AppCompatActivity {
             closeReplyPreview();
         } else {
             if (myRealKey == null) Toast.makeText(this, "Ошибка: локальный ключ не найден", Toast.LENGTH_SHORT).show();
-            if (targetPublicKey == null) Toast.makeText(this, "Ошибка: ключ собеседника не загружен", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(this, "Ошибка: ключ собеседника еще загружается", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1661,6 +1659,10 @@ public class ChatActivity extends AppCompatActivity {
                 Map uploadResult = cloudinary.uploader().upload(inputStream, options);
                 String secureUrl = (String) uploadResult.get("secure_url");
 
+                String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
+                String encForReceiver = CryptoHelper.encryptForRecipient(caption, targetPublicKey);
+                String encForSender = CryptoHelper.encryptForRecipient(caption, myRealKey);
+
                 runOnUiThread(() -> {
                     uploadTasks.remove(tempMessageId);
                     removeTempMessageLocally(tempMessageId);
@@ -1668,6 +1670,7 @@ public class ChatActivity extends AppCompatActivity {
                         String messageId = chatRef.push().getKey();
                         if (messageId != null) {
                             ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encryptForRecipient(caption, targetPublicKey), System.currentTimeMillis(), "image");
+                            message.setTextSender(encForSender);
                             message.setMessageId(messageId);
 
                             if (replyingToMessage != null) {

@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,17 +13,20 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mapmemories.Lenta.MainActivity;
 import com.example.mapmemories.R;
+import com.example.mapmemories.systemHelpers.CryptoHelper;
+import com.example.mapmemories.systemHelpers.LocalAccount;
+import com.example.mapmemories.systemHelpers.MultiAccountManager;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -50,10 +52,12 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void checkCurrentUser() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null) {
-            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-            finish();
+        if (!getIntent().getBooleanExtra("is_adding_account", false)) {
+            FirebaseUser currentUser = mAuth.getCurrentUser();
+            if (currentUser != null) {
+                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                finish();
+            }
         }
     }
 
@@ -107,15 +111,18 @@ public class LoginActivity extends AppCompatActivity {
         if (!hasError) {
             showLoading(true);
             mAuth.signInWithEmailAndPassword(email, password)
+                    // ... внутри mAuth.signInWithEmailAndPassword ...
                     .addOnCompleteListener(this, task -> {
                         showLoading(false);
                         if (task.isSuccessful()) {
-                            VibratorHelper.vibrate(this, 30);
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                            finish();
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) {
+                                // ВМЕСТО прямого перехода вызываем проверку E2EE
+                                handleE2EELogin(user, email, password);
+                            }
                         } else {
                             VibratorHelper.vibrate(this, 100);
-                            Toast.makeText(LoginActivity.this, "Ошибка входа. Проверьте данные.", Toast.LENGTH_LONG).show();
+                            Toast.makeText(LoginActivity.this, "Ошибка входа", Toast.LENGTH_SHORT).show();
                         }
                     });
         }
@@ -178,4 +185,60 @@ public class LoginActivity extends AppCompatActivity {
         registerButton.setEnabled(!isLoading);
         forgotPasswordTextView.setEnabled(!isLoading);
     }
+
+    private void handleE2EELogin(FirebaseUser user, String email, String password) {
+        String uid = user.getUid();
+
+        if (CryptoHelper.getLocalPublicKey(uid) == null) {
+            showE2EEWarningDialog(user, email, password);
+        } else {
+            saveAccountAndProceed(user, email, password);
+        }
+    }
+
+    private void showE2EEWarningDialog(FirebaseUser user, String email, String password) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories)
+                .setTitle("Новое устройство")
+                .setMessage("Поскольку GhostNet использует сквозное шифрование, ваши старые сообщения на этом устройстве прочитать не получится. \n\nВы согласны создать новые ключи безопасности и начать с чистого листа?")
+                .setCancelable(false) // Нельзя закрыть тыком мимо
+                .setPositiveButton("Согласен", (dialog, which) -> {
+                    try {
+                        // 1. Генерируем новые ключи для этого устройства
+                        String newPublicKey = CryptoHelper.generateKeyPair(user.getUid());
+
+                        // 2. Обновляем публичный ключ в Firebase, чтобы нам могли писать
+                        FirebaseDatabase.getInstance().getReference("users")
+                                .child(user.getUid()).child("publicKey").setValue(newPublicKey);
+
+                        // 3. Сохраняем аккаунт и идем дальше
+                        saveAccountAndProceed(user, email, password);
+
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Ошибка безопасности", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Отмена", (dialog, which) -> {
+                    // Если не согласен — выходим из аккаунта
+                    FirebaseAuth.getInstance().signOut();
+                    dialog.dismiss();
+                })
+                .show();
+    }
+
+    private void saveAccountAndProceed(FirebaseUser user, String email, String password) {
+        // Сохраняем в наш MultiAccountManager
+        LocalAccount newAcc = new LocalAccount(
+                user.getUid(),
+                email,
+                password,
+                user.getDisplayName() != null ? user.getDisplayName() : "Пользователь",
+                user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : ""
+        );
+        new MultiAccountManager(this).addAccount(newAcc);
+
+        // Идем в главное меню
+        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+        finish();
+    }
+
 }

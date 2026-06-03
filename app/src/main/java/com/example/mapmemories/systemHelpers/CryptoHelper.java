@@ -3,6 +3,7 @@ package com.example.mapmemories.systemHelpers;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import com.google.firebase.auth.FirebaseAuth;
 import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -18,34 +19,40 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoHelper {
 
-    private static final String RSA_ALIAS = "GhostNet_RSA_Key";
     private static final String KEYSTORE = "AndroidKeyStore";
-
-    // МЕНЯЕМ НА БОЛЕЕ СОВМЕСТИМЫЙ РЕЖИМ
     private static final String RSA_MODE = "RSA/ECB/PKCS1Padding";
     private static final String AES_MODE = "AES/GCM/NoPadding";
 
-    public static String generateKeyPair() throws Exception {
+    private static String getAlias(String uid) {
+        if (uid == null || uid.isEmpty()) {
+            uid = FirebaseAuth.getInstance().getUid();
+        }
+        return "GhostNet_Key_" + (uid != null ? uid : "default");
+    }
+
+    public static String generateKeyPair(String uid) throws Exception {
+        String alias = getAlias(uid);
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, KEYSTORE);
         kpg.initialize(new KeyGenParameterSpec.Builder(
-                RSA_ALIAS,
+                alias,
                 KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1) // МЕНЯЕМ ТУТ
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
                 .build());
         kpg.generateKeyPair();
 
         KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
         keyStore.load(null);
-        PublicKey publicKey = keyStore.getCertificate(RSA_ALIAS).getPublicKey();
+        PublicKey publicKey = keyStore.getCertificate(alias).getPublicKey();
         return Base64.encodeToString(publicKey.getEncoded(), Base64.NO_WRAP);
     }
 
-    public static String getLocalPublicKey() {
+    public static String getLocalPublicKey(String uid) {
         try {
-            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            String alias = getAlias(uid);
+            KeyStore ks = KeyStore.getInstance(KEYSTORE);
             ks.load(null);
-            java.security.cert.Certificate cert = ks.getCertificate(RSA_ALIAS);
+            java.security.cert.Certificate cert = ks.getCertificate(alias);
             if (cert == null) return null;
             return Base64.encodeToString(cert.getPublicKey().getEncoded(), Base64.NO_WRAP);
         } catch (Exception e) {
@@ -85,7 +92,6 @@ public class CryptoHelper {
 
     public static String decrypt(String encryptedPackage) {
         try {
-            // Теперь ищем префикс V3
             if (encryptedPackage == null || !encryptedPackage.startsWith("ENC_V3:")) return encryptedPackage;
 
             String[] parts = encryptedPackage.substring(7).split(":");
@@ -95,7 +101,14 @@ public class CryptoHelper {
 
             KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
             keyStore.load(null);
-            PrivateKey privateKey = (PrivateKey) keyStore.getKey(RSA_ALIAS, null);
+
+            String alias = getAlias(null);
+
+            if (!keyStore.containsAlias(alias)) {
+                return "[Ошибка: Ключ не найден для этого аккаунта]";
+            }
+
+            PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, null);
 
             Cipher rsaCipher = Cipher.getInstance(RSA_MODE);
             rsaCipher.init(Cipher.DECRYPT_MODE, privateKey);
@@ -106,8 +119,7 @@ public class CryptoHelper {
             aesCipher.init(Cipher.DECRYPT_MODE, aesKey, new GCMParameterSpec(128, iv));
             return new String(aesCipher.doFinal(encryptedMessage), "UTF-8");
         } catch (Exception e) {
-            android.util.Log.e("GHOST_CRYPTO", "Error: " + e.getMessage());
-            return "[Ошибка: " + e.getMessage() + "]"; // Будет писать конкретно, что не так
+            return "[Ошибка дешифровки]";
         }
     }
 }

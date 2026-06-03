@@ -22,6 +22,8 @@ import com.google.android.material.textfield.TextInputLayout;
 
 public class DialogHelper {
 
+    private static AlertDialog progressDialog;
+
     public interface OnInputListener {
         void onSave(String text);
     }
@@ -123,4 +125,31 @@ public class DialogHelper {
             }
         }
     }
+
+    public static void showProgress(Activity activity, String message) {
+        applyBlur(activity, true);
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+
+        View view = LayoutInflater.from(activity).inflate(R.layout.dialog_loading, null);
+        TextView tvMessage = view.findViewById(R.id.loadingMessage);
+        tvMessage.setText(message);
+
+        builder.setView(view);
+        builder.setCancelable(false);
+
+        progressDialog = builder.create();
+        if (progressDialog.getWindow() != null) {
+            progressDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        progressDialog.show();
+    }
+
+    public static void hideProgress(Activity activity) {
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+        applyBlur(activity, false);
+    }
+
+
 }

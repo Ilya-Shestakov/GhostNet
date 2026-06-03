@@ -23,7 +23,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.core.content.ContextCompat;
+
 import com.example.mapmemories.systemHelpers.MessageListenerService;
 
 import androidx.activity.OnBackPressedCallback;
@@ -59,20 +59,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 
-import android.app.Dialog;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.TrafficStats;
-import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.View;
-import android.view.Window;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import com.google.android.material.card.MaterialCardView;
-import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
 

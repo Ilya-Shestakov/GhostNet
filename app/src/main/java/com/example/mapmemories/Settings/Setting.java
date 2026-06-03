@@ -14,7 +14,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
@@ -22,6 +21,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,7 +34,9 @@ import androidx.core.content.ContextCompat;
 import com.example.mapmemories.LogRegStart.LoginActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.DialogHelper;
+import com.example.mapmemories.systemHelpers.LocalAccount;
 import com.example.mapmemories.systemHelpers.MessageListenerService;
+import com.example.mapmemories.systemHelpers.MultiAccountManager;
 import com.example.mapmemories.systemHelpers.SwipeBackHelper;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -44,6 +46,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.io.File;
+import java.util.List;
 
 public class Setting extends AppCompatActivity {
 
@@ -54,6 +57,9 @@ public class Setting extends AppCompatActivity {
     private TextView btnChangePassword, btnPrivacy, btnTextSize, btnClearCache, btnSupport, btnLogout, btnDeleteAccount;
 
     private SwitchMaterial switchTheme, switchNotifications, switchMic, switchGallery;
+
+    private MultiAccountManager accountManager;
+    private LinearLayout accountsContainer;
 
     private SharedPreferences prefs;
     public static final String PREFS_NAME = "AppPrefs";
@@ -94,6 +100,62 @@ public class Setting extends AppCompatActivity {
         loadSettings();
         setupClickListeners();
         handleRevealAnimation(savedInstanceState);
+
+        accountsContainer = findViewById(R.id.accountsContainer);
+        accountManager = new MultiAccountManager(this);
+        renderAccounts();
+    }
+
+    private void renderAccounts() {
+        // Очищаем всё, кроме кнопки "Добавить"
+        int childCount = accountsContainer.getChildCount();
+        if (childCount > 1) {
+            accountsContainer.removeViews(0, childCount - 1);
+        }
+
+        List<LocalAccount> accounts = accountManager.getAccounts();
+        String currentUid = FirebaseAuth.getInstance().getUid();
+
+        for (LocalAccount acc : accounts) {
+            View accountView = getLayoutInflater().inflate(R.layout.item_multi_account, null);
+            TextView name = accountView.findViewById(R.id.accName);
+            ImageView avatar = accountView.findViewById(R.id.accAvatar);
+            View indicator = accountView.findViewById(R.id.activeIndicator);
+
+            name.setText(acc.username);
+            if (acc.uid.equals(currentUid)) indicator.setVisibility(View.VISIBLE);
+            else indicator.setVisibility(View.GONE);
+
+            // Клик по аккаунту = переключение
+            accountView.setOnClickListener(v -> {
+                if (!acc.uid.equals(currentUid)) switchAccount(acc);
+            });
+
+            accountsContainer.addView(accountView, 0); // Добавляем в начало
+        }
+
+        findViewById(R.id.btnAddAccount).setOnClickListener(v -> {
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.putExtra("is_adding_account", true);
+            startActivity(intent);
+        });
+    }
+
+    private void switchAccount(LocalAccount acc) {
+        DialogHelper.showProgress(this, "Переключение...");
+        FirebaseAuth.getInstance().signOut();
+        FirebaseAuth.getInstance().signInWithEmailAndPassword(acc.email, acc.password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        // Перезапускаем приложение, чтобы обновить все данные и ключи
+                        Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        finish();
+                    } else {
+                        Toast.makeText(this, "Ошибка входа", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void initLaunchers() {
