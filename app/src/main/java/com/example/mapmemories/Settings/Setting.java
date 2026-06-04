@@ -27,6 +27,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
@@ -43,7 +44,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.io.File;
 import java.util.List;
@@ -77,6 +81,8 @@ public class Setting extends AppCompatActivity {
     private ActivityResultLauncher<String> requestMicLauncher;
     private ActivityResultLauncher<String> requestGalleryLauncher;
 
+    private TextView btnMigrateAccount;
+
     @Override
     protected void attachBaseContext(Context newBase) {
         SharedPreferences preferences = newBase.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -104,10 +110,11 @@ public class Setting extends AppCompatActivity {
         accountsContainer = findViewById(R.id.accountsContainer);
         accountManager = new MultiAccountManager(this);
         renderAccounts();
+
+        syncCurrentAccountData();
     }
 
     private void renderAccounts() {
-        // Очищаем всё, кроме кнопки "Добавить"
         int childCount = accountsContainer.getChildCount();
         if (childCount > 1) {
             accountsContainer.removeViews(0, childCount - 1);
@@ -123,6 +130,17 @@ public class Setting extends AppCompatActivity {
             View indicator = accountView.findViewById(R.id.activeIndicator);
 
             name.setText(acc.username);
+
+            if (acc.avatarUrl != null && !acc.avatarUrl.isEmpty()) {
+                com.bumptech.glide.Glide.with(this)
+                        .load(acc.avatarUrl)
+                        .circleCrop()
+                        .placeholder(R.drawable.ic_profile_placeholder)
+                        .into(avatar);
+            } else {
+                avatar.setImageResource(R.drawable.ic_profile_placeholder);
+            }
+
             if (acc.uid.equals(currentUid)) indicator.setVisibility(View.VISIBLE);
             else indicator.setVisibility(View.GONE);
 
@@ -177,6 +195,34 @@ public class Setting extends AppCompatActivity {
         });
     }
 
+    private void syncCurrentAccountData() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        String uid = currentUser.getUid();
+
+        // Идем в базу за свежими данными
+        FirebaseDatabase.getInstance().getReference("users").child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            String username = snapshot.child("username").getValue(String.class);
+                            String avatarUrl = snapshot.child("profileImageUrl").getValue(String.class);
+
+                            // Обновляем локальную "базу" аккаунтов
+                            accountManager.updateAccountInfo(uid, username, avatarUrl);
+
+                            // Перерисовываем список, чтобы увидеть изменения
+                            renderAccounts();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+
     private void initViews() {
         mainContentLayout = findViewById(R.id.mainContentLayout);
         btnBack = findViewById(R.id.btnBack);
@@ -192,6 +238,7 @@ public class Setting extends AppCompatActivity {
         switchNotifications = findViewById(R.id.switchNotifications);
         switchMic = findViewById(R.id.switchMic);
         switchGallery = findViewById(R.id.switchGallery);
+        btnMigrateAccount = findViewById(R.id.btnMigrateAccount);
     }
 
     private void loadSettings() {
@@ -376,7 +423,6 @@ public class Setting extends AppCompatActivity {
     private void setupClickListeners() {
         btnBack.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); Close(); });
         btnChangePassword.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); sendPasswordResetEmail(); });
-        //btnPrivacy.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showPrivacyDialog(); });
 
         switchTheme.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
@@ -384,6 +430,11 @@ public class Setting extends AppCompatActivity {
                 prefs.edit().putBoolean(PREF_DARK_THEME, isChecked).apply();
                 AppCompatDelegate.setDefaultNightMode(isChecked ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
             }
+        });
+
+        btnMigrateAccount.setOnClickListener(v -> {
+            VibratorHelper.vibrate(this, 30);
+            startActivity(new Intent(this, com.example.mapmemories.Chats.AccountMigrationActivity.class));
         });
 
         btnTextSize.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showTextSizeDialog(); });

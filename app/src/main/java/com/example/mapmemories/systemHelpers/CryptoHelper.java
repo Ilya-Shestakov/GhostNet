@@ -1,5 +1,6 @@
 package com.example.mapmemories.systemHelpers;
 
+import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -58,6 +59,59 @@ public class CryptoHelper {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public static String getDeviceId(Context context) {
+        return android.provider.Settings.Secure.getString(
+                context.getContentResolver(),
+                android.provider.Settings.Secure.ANDROID_ID
+        );
+    }
+
+
+
+
+
+    public static String encryptWithPublicKey(String plainText, String publicKeyBase64) throws Exception {
+        byte[] keyBytes = Base64.decode(publicKeyBase64, Base64.NO_WRAP);
+        java.security.PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new java.security.spec.X509EncodedKeySpec(keyBytes));
+        Cipher cipher = Cipher.getInstance(RSA_MODE);
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        return Base64.encodeToString(cipher.doFinal(plainText.getBytes("UTF-8")), Base64.NO_WRAP);
+    }
+
+    public static String decryptWithPrivateKey(String encryptedBase64, java.security.PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance(RSA_MODE);
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        return new String(cipher.doFinal(Base64.decode(encryptedBase64, Base64.NO_WRAP)), "UTF-8");
+    }
+
+    public static java.security.KeyPair generateTemporaryKeyPair() throws Exception {
+        java.security.KeyPairGenerator kpg = java.security.KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        return kpg.generateKeyPair();
+    }
+
+
+
+
+
+
+    public static String getLocalIpAddress() {
+        try {
+            java.util.List<java.net.NetworkInterface> interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces());
+            for (java.net.NetworkInterface intf : interfaces) {
+                java.util.List<java.net.InetAddress> addrs = java.util.Collections.list(intf.getInetAddresses());
+                for (java.net.InetAddress addr : addrs) {
+                    if (!addr.isLoopbackAddress()) {
+                        String sAddr = addr.getHostAddress();
+                        boolean isIPv4 = sAddr.indexOf(':') < 0;
+                        if (isIPv4) return sAddr;
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
+        return "0.0.0.0";
     }
 
     public static String encryptForRecipient(String message, String recipientPublicKeyBase64) {

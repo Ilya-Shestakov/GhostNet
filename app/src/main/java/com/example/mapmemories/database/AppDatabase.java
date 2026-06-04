@@ -5,9 +5,10 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {OfflinePost.class}, version = 1)
+@Database(entities = {OfflinePost.class, LocalMessage.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract OfflinePostDao offlinePostDao();
+    public abstract LocalMessageDao localMessageDao();
 
     private static volatile AppDatabase INSTANCE;
 
@@ -17,6 +18,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "map_memories_db")
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

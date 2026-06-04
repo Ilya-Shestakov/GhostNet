@@ -1,18 +1,22 @@
 package com.example.mapmemories.LogRegStart;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mapmemories.Lenta.MainActivity;
@@ -38,6 +42,11 @@ public class LoginActivity extends AppCompatActivity {
     private RelativeLayout overlay;
 
     private FirebaseAuth mAuth;
+
+    private LinearLayout loginFieldsContainer, qrContainer;
+    private ImageView ivQrCode;
+    private Button btnSwitchMode;
+    private boolean isQrMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +83,11 @@ public class LoginActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         overlay = findViewById(R.id.overlay);
 
+        loginFieldsContainer = findViewById(R.id.loginFieldsContainer);
+        qrContainer = findViewById(R.id.qrContainer);
+        ivQrCode = findViewById(R.id.ivQrCode);
+        btnSwitchMode = findViewById(R.id.btnSwitchMode);
+
         showLoading(false);
     }
 
@@ -86,6 +100,8 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         forgotPasswordTextView.setOnClickListener(v -> showForgotPasswordDialog());
+
+        btnSwitchMode.setOnClickListener(v -> toggleLoginMode());
     }
 
     private void attemptLogin() {
@@ -111,14 +127,31 @@ public class LoginActivity extends AppCompatActivity {
         if (!hasError) {
             showLoading(true);
             mAuth.signInWithEmailAndPassword(email, password)
-                    // ... внутри mAuth.signInWithEmailAndPassword ...
                     .addOnCompleteListener(this, task -> {
                         showLoading(false);
                         if (task.isSuccessful()) {
-                            FirebaseUser user = mAuth.getCurrentUser();
+                            FirebaseUser user = task.getResult().getUser();
                             if (user != null) {
-                                // ВМЕСТО прямого перехода вызываем проверку E2EE
-                                handleE2EELogin(user, email, password);
+                                String uid = user.getUid();
+
+                                if (CryptoHelper.getLocalPublicKey(uid) == null) {
+
+                                    try {
+                                        String newPublicKey = CryptoHelper.generateKeyPair(uid);
+
+                                        FirebaseDatabase.getInstance().getReference("users")
+                                                .child(uid).child("publicKey").setValue(newPublicKey);
+
+                                        Toast.makeText(this, "Созданы новые ключи безопасности для этого устройства", Toast.LENGTH_LONG).show();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+
+                                String deviceId = CryptoHelper.getDeviceId(this);
+                                FirebaseDatabase.getInstance().getReference("users").child(uid).child("currentDeviceId").setValue(deviceId);
+
+                                saveAccountAndProceed(user, email, password);
                             }
                         } else {
                             VibratorHelper.vibrate(this, 100);
@@ -173,6 +206,35 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    private void toggleLoginMode() {
+        isQrMode = !isQrMode;
+
+        android.transition.TransitionManager.beginDelayedTransition((android.view.ViewGroup) loginFieldsContainer.getParent(),
+                new android.transition.AutoTransition().setDuration(300));
+
+        if (isQrMode) {
+            loginFieldsContainer.setVisibility(View.GONE);
+            qrContainer.setVisibility(View.VISIBLE);
+            btnSwitchMode.setText("Войти по почте");
+
+            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams params =
+                    (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) btnSwitchMode.getLayoutParams();
+            params.topToBottom = R.id.qrContainer;
+            btnSwitchMode.setLayoutParams(params);
+
+            generateLoginQr();
+        } else {
+            qrContainer.setVisibility(View.GONE);
+            loginFieldsContainer.setVisibility(View.VISIBLE);
+            btnSwitchMode.setText("Войти по QR-коду");
+
+            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams params =
+                    (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) btnSwitchMode.getLayoutParams();
+            params.topToBottom = R.id.loginFieldsContainer;
+            btnSwitchMode.setLayoutParams(params);
+        }
+    }
+
     private boolean isValidEmail(String email) {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches();
     }
@@ -196,6 +258,87 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    private java.security.PrivateKey tempPrivateKey;
+
+    private void generateLoginQr() {
+        try {
+            java.security.KeyPair tempPair = CryptoHelper.generateTemporaryKeyPair();
+            tempPrivateKey = tempPair.getPrivate();
+            String tempPublicKey = Base64.encodeToString(tempPair.getPublic().getEncoded(), Base64.NO_WRAP);
+
+            String ip = CryptoHelper.getLocalIpAddress();
+            String qrData = "GHOSTNET_MIGRATE:" + ip + ":8888:" + tempPublicKey;
+
+            com.google.zxing.qrcode.QRCodeWriter writer = new com.google.zxing.qrcode.QRCodeWriter();
+            com.google.zxing.common.BitMatrix bitMatrix = writer.encode(qrData, com.google.zxing.BarcodeFormat.QR_CODE, 512, 512);
+
+            int width = bitMatrix.getWidth();
+            int height = bitMatrix.getHeight();
+            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+            ivQrCode.setImageBitmap(bmp);
+            startSocketServer();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startSocketServer() {
+        new Thread(() -> {
+            try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8888)) {
+                java.net.Socket clientSocket = serverSocket.accept();
+                java.io.DataInputStream dis = new java.io.DataInputStream(clientSocket.getInputStream());
+
+                String encryptedAuth = dis.readUTF();
+                String encryptedMessages = dis.readUTF();
+
+                String decryptedAuth = CryptoHelper.decryptWithPrivateKey(encryptedAuth, tempPrivateKey);
+                String[] authParts = decryptedAuth.split("\\|"); // email|password|uid
+
+                runOnUiThread(() -> finalizeMigration(authParts, encryptedMessages));
+                clientSocket.close();
+            } catch (Exception e) { e.printStackTrace(); }
+        }).start();
+    }
+
+    private void finalizeMigration(String[] auth, String messagesJson) {
+        mAuth.signInWithEmailAndPassword(auth[0], auth[1]).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                FirebaseUser user = task.getResult().getUser();
+                if (user != null) {
+                    new Thread(() -> {
+                        try {
+                            java.lang.reflect.Type type = new com.google.gson.reflect.TypeToken<java.util.List<com.example.mapmemories.database.LocalMessage>>(){}.getType();
+                            java.util.List<com.example.mapmemories.database.LocalMessage> list = new com.google.gson.Gson().fromJson(messagesJson, type);
+
+                            com.example.mapmemories.database.AppDatabase.getDatabase(this).localMessageDao().insertMessages(list);
+
+                            runOnUiThread(() -> {
+                                String deviceId = CryptoHelper.getDeviceId(this);
+                                FirebaseDatabase.getInstance().getReference("users")
+                                        .child(user.getUid()).child("currentDeviceId").setValue(deviceId);
+
+                                saveAccountAndProceed(user, auth[0], auth[1]);
+                                Toast.makeText(this, "Миграция завершена! Восстановлено " + list.size() + " сообщений", Toast.LENGTH_LONG).show();
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+                }
+            }
+        });
+    }
+
+
+    private void handleImportedData(String json) {
+        Toast.makeText(this, "Данные получены! Начинаю импорт...", Toast.LENGTH_LONG).show();
+    }
+
     private void showE2EEWarningDialog(FirebaseUser user, String email, String password) {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.Theme_MapMemories)
                 .setTitle("Новое устройство")
@@ -203,14 +346,11 @@ public class LoginActivity extends AppCompatActivity {
                 .setCancelable(false) // Нельзя закрыть тыком мимо
                 .setPositiveButton("Согласен", (dialog, which) -> {
                     try {
-                        // 1. Генерируем новые ключи для этого устройства
                         String newPublicKey = CryptoHelper.generateKeyPair(user.getUid());
 
-                        // 2. Обновляем публичный ключ в Firebase, чтобы нам могли писать
                         FirebaseDatabase.getInstance().getReference("users")
                                 .child(user.getUid()).child("publicKey").setValue(newPublicKey);
 
-                        // 3. Сохраняем аккаунт и идем дальше
                         saveAccountAndProceed(user, email, password);
 
                     } catch (Exception e) {
@@ -218,7 +358,6 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 })
                 .setNegativeButton("Отмена", (dialog, which) -> {
-                    // Если не согласен — выходим из аккаунта
                     FirebaseAuth.getInstance().signOut();
                     dialog.dismiss();
                 })
@@ -226,19 +365,22 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void saveAccountAndProceed(FirebaseUser user, String email, String password) {
-        // Сохраняем в наш MultiAccountManager
+        String uid = user.getUid();
+        String deviceId = CryptoHelper.getDeviceId(this);
+
+        FirebaseDatabase.getInstance().getReference("users")
+                .child(uid)
+                .child("currentDeviceId")
+                .setValue(deviceId);
+
         LocalAccount newAcc = new LocalAccount(
-                user.getUid(),
-                email,
-                password,
+                uid, email, password,
                 user.getDisplayName() != null ? user.getDisplayName() : "Пользователь",
                 user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : ""
         );
         new MultiAccountManager(this).addAccount(newAcc);
 
-        // Идем в главное меню
         startActivity(new Intent(LoginActivity.this, MainActivity.class));
         finish();
     }
-
 }

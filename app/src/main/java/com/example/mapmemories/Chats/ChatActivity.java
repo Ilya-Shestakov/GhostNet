@@ -1825,22 +1825,54 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void loadMessagesOptimized() {
+        // 1. Сначала загружаем историю из Room
+        new Thread(() -> {
+            com.example.mapmemories.database.LocalMessageDao dao =
+                    com.example.mapmemories.database.AppDatabase.getDatabase(this).localMessageDao();
+            java.util.List<com.example.mapmemories.database.LocalMessage> localHistory = dao.getMessagesForChat(chatId);
+
+            runOnUiThread(() -> {
+                for (com.example.mapmemories.database.LocalMessage local : localHistory) {
+                    // Превращаем локальное сообщение обратно в объект ChatMessage для адаптера
+                    ChatMessage msg = new ChatMessage();
+                    msg.setMessageId(local.messageId);
+                    msg.setSenderId(local.senderId);
+                    msg.setReceiverId(local.receiverId);
+                    msg.setTimestamp(local.timestamp);
+                    msg.setType(local.type);
+                    // ВАЖНО: помечаем текст как уже расшифрованный, чтобы адаптер его не трогал
+                    msg.setText(local.text);
+
+                    messageList.add(msg);
+                }
+                chatAdapter.notifyDataSetChanged();
+                if (!messageList.isEmpty()) {
+                    chatRecyclerView.scrollToPosition(messageList.size() - 1);
+                    emptyChatContainer.setVisibility(View.GONE);
+                }
+
+                startFirebaseListener();
+            });
+        }).start();
+    }
+
+    private void startFirebaseListener() {
         messagesListener = chatRef.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                 ChatMessage msg = snapshot.getValue(ChatMessage.class);
-
                 if (msg != null) {
-                    String deletedBy = msg.getDeletedBy();
-                    String receiverId = msg.getReceiverId();
+                    // ПРОВЕРКА: если это сообщение уже есть в списке (загружено из Room), игнорируем его
+                    for (ChatMessage existing : messageList) {
+                        if (existing.getMessageId().equals(msg.getMessageId())) return;
+                    }
 
-                    if (deletedBy == null || (currentUserId != null && !deletedBy.equals(currentUserId))) {
-
-                        if (currentUserId != null && currentUserId.equals(receiverId) && !msg.isRead()) {
+                    // Обработка нового сообщения (как было раньше)
+                    if (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId)) {
+                        if (currentUserId.equals(msg.getReceiverId()) && !msg.isRead()) {
                             snapshot.getRef().child("read").setValue(true);
                             msg.setRead(true);
                         }
-
                         messageList.add(msg);
                         chatAdapter.notifyItemInserted(messageList.size() - 1);
                         chatRecyclerView.scrollToPosition(messageList.size() - 1);
@@ -1848,39 +1880,26 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 }
             }
+
             @Override
             public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                ChatMessage updatedMsg = snapshot.getValue(ChatMessage.class);
-                if (updatedMsg != null) {
-                    for (int i = 0; i < messageList.size(); i++) {
-                        if (messageList.get(i).getMessageId().equals(updatedMsg.getMessageId())) {
-                            if (updatedMsg.getDeletedBy() != null && updatedMsg.getDeletedBy().equals(currentUserId)) {
-                                messageList.remove(i);
-                                chatAdapter.notifyItemRemoved(i);
-                            } else {
-                                messageList.set(i, updatedMsg);
-                                chatAdapter.notifyItemChanged(i);
-                            }
-                            break;
-                        }
-                    }
-                }
+
             }
 
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-                String removedId = snapshot.getKey();
-                for (int i = 0; i < messageList.size(); i++) {
-                    if (messageList.get(i).getMessageId().equals(removedId)) {
-                        messageList.remove(i);
-                        chatAdapter.notifyItemRemoved(i);
-                        break;
-                    }
-                }
-                if (messageList.isEmpty()) emptyChatContainer.setVisibility(View.VISIBLE);
+
             }
-            @Override public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
         });
     }
 

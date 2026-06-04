@@ -188,18 +188,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     }
 
     private String getDecryptedContent(ChatMessage message) {
-        boolean isMine = currentUserId != null && currentUserId.equals(message.getSenderId());
-        String dataToDecrypt;
+        String data = (currentUserId.equals(message.getSenderId()) && message.getTextSender() != null)
+                ? message.getTextSender() : message.getText();
 
-        if (isMine) {
-            // Если моё — берем textSender, если его нет — text
-            dataToDecrypt = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
-        } else {
-            // Если чужое — только text
-            dataToDecrypt = message.getText();
+        if (data == null || !data.startsWith("ENC_V3:")) {
+            return data;
         }
 
-        return CryptoHelper.decrypt(dataToDecrypt);
+        return CryptoHelper.decrypt(data);
     }
 
 

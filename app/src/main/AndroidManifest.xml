@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.mapmemories">
+    package="com.example.mapmemories" >
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission
@@ -14,30 +18,31 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:name=".MapMemoriesApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="MapMemories"
+        android:label="GhostNet"
         android:theme="@style/Theme.MapMemories"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true" >
+        <activity
+            android:name=".Chats.AccountMigrationActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
             android:name=".Settings.Setting"
             android:exported="false"
-            android:theme="@style/Theme.MapMemories.Transparent"/>
+            android:theme="@style/Theme.MapMemories.Transparent" />
         <activity
             android:name=".Profile.UserProfileActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.MapMemories.Transparent"/>
+            android:theme="@style/Theme.MapMemories.Transparent" />
         <activity
             android:name=".Chats.ChatActivity"
             android:exported="false"
-            android:theme="@style/Theme.MapMemories.Transparent"
-            />
+            android:theme="@style/Theme.MapMemories.Transparent" />
         <activity
             android:name=".Profile.PickPostActivity"
             android:exported="false" />
@@ -46,7 +51,7 @@
             android:exported="false" />
         <activity
             android:name=".Lenta.PickLocationActivity"
-            android:screenOrientation="portrait"
+
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
         <activity
             android:name=".Lenta.Map"
@@ -74,7 +79,7 @@
             android:theme="@style/Theme.MapMemories.Transparent" />
         <activity
             android:name=".LogRegStart.SplashActivity"
-            android:exported="true">
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

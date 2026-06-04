@@ -28,6 +28,24 @@ public class MultiAccountManager {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
+    public void updateAccountInfo(String uid, String newUsername, String newAvatarUrl) {
+        List<LocalAccount> accounts = getAccounts();
+        boolean changed = false;
+
+        for (LocalAccount acc : accounts) {
+            if (acc.uid.equals(uid)) {
+                acc.username = newUsername;
+                acc.avatarUrl = newAvatarUrl;
+                changed = true;
+                break;
+            }
+        }
+
+        if (changed) {
+            securePrefs.edit().putString("account_list", gson.toJson(accounts)).apply();
+        }
+    }
+
     public void addAccount(LocalAccount account) {
         List<LocalAccount> accounts = getAccounts();
         // Удаляем старую запись, если она была (чтобы обновить данные)

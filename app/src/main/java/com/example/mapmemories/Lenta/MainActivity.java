@@ -12,6 +12,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.mapmemories.systemHelpers.CryptoHelper;
+import com.example.mapmemories.systemHelpers.LocalAccount;
+import com.example.mapmemories.systemHelpers.MultiAccountManager;
 import com.google.android.material.badge.BadgeDrawable;
 import com.example.mapmemories.Chats.ChatMessage;
 import androidx.core.content.ContextCompat;
@@ -60,6 +63,8 @@ import com.google.firebase.database.ValueEventListener;
 
 
 import android.net.TrafficStats;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -116,6 +121,7 @@ public class MainActivity extends AppCompatActivity {
         setupDoubleBackExit();
         checkNotificationPermission();
         setupConnectionObserver();
+        startSessionWatchdog();
     }
 
     private void checkCurrentUser() {
@@ -168,7 +174,65 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startSessionWatchdog() {
+        String currentUid = FirebaseAuth.getInstance().getUid();
+        if (currentUid == null) return;
 
+        String myDeviceId = CryptoHelper.getDeviceId(this);
+
+        FirebaseDatabase.getInstance().getReference("users")
+                .child(currentUid)
+                .child("currentDeviceId")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String activeDeviceId = snapshot.getValue(String.class);
+                        if (activeDeviceId != null && !activeDeviceId.equals(myDeviceId)) {
+
+                            handleSessionExpired(currentUid);
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+
+    private void handleSessionExpired(String kickedUid) {
+        MultiAccountManager accountManager = new MultiAccountManager(this);
+
+        accountManager.removeAccount(kickedUid);
+
+        String currentFirebaseUid = FirebaseAuth.getInstance().getUid();
+
+        if (kickedUid.equals(currentFirebaseUid)) {
+
+            List<LocalAccount> remaining = accountManager.getAccounts();
+
+            if (!remaining.isEmpty()) {
+                Toast.makeText(this, "Сессия завершена. Переключаемся на другой аккаунт...", Toast.LENGTH_LONG).show();
+
+                LocalAccount next = remaining.get(0);
+
+                FirebaseAuth.getInstance().signOut();
+                FirebaseAuth.getInstance().signInWithEmailAndPassword(next.email, next.password)
+                        .addOnCompleteListener(task -> {
+                            Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            startActivity(intent);
+                            finish();
+                        });
+            } else {
+                FirebaseAuth.getInstance().signOut();
+                Toast.makeText(this, "Все сессии завершены", Toast.LENGTH_LONG).show();
+
+                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                finish();
+            }
+        } else {
+            Toast.makeText(this, "Один из ваших аккаунтов был использован на другом устройстве", Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void showNetworkStatsDialog() {
         com.example.mapmemories.systemHelpers.VibratorHelper.vibrate(this, 30);
