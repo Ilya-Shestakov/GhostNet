@@ -1,11 +1,13 @@
 package com.example.mapmemories.Chats;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Environment;
@@ -18,22 +20,29 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.OvershootInterpolator;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
+import com.bumptech.glide.request.target.Target;
 import com.example.mapmemories.Post.ViewPostDetailsActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.AudioPlayerManager;
@@ -65,6 +74,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     private ChatActionListener actionListener;
     private Map<String, PostCacheData> postCache = new HashMap<>();
 
+    private boolean dismissBlocked = false;
+    private final Handler dismissHandler = new Handler();
+
     private String highlightedMessageId = null;
     private final Handler highlightHandler = new Handler();
 
@@ -72,9 +84,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     private Set<String> uploadingMessageIds = new HashSet<>();
     private boolean isSelectionMode = false;
 
+    private PopupWindow currentMenu;
+
     private Map<String, Integer> voiceDurations = new HashMap<>();
 
     public interface ChatActionListener {
+
+        void onSecretImageClicked(View thumbView, ChatMessage message);
         void onEditMessage(ChatMessage message);
         void onDeleteMessage(ChatMessage message, boolean forEveryone);
         void onReplyMessage(ChatMessage message);
@@ -161,6 +177,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     /* |-----------------------------------------------------------------------|
      * |                           БИНДИНГ UI                                  |
      * |-----------------------------------------------------------------------| */
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -188,14 +205,41 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     }
 
     private String getDecryptedContent(ChatMessage message) {
-        String data = (currentUserId.equals(message.getSenderId()) && message.getTextSender() != null)
-                ? message.getTextSender() : message.getText();
 
-        if (data == null || !data.startsWith("ENC_V3:")) {
-            return data;
+        String cached = message.getDecryptedTextCache();
+        if (cached != null) {
+            return cached;
         }
 
-        return CryptoHelper.decrypt(data);
+        // Кэша нет — выполняем расшифровку
+        boolean isMine = currentUserId != null && currentUserId.equals(message.getSenderId());
+        String data;
+        if (isMine) {
+            data = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
+        } else {
+            data = message.getText();
+        }
+
+        if (data == null) return "";
+        if (!data.startsWith("ENC_V3:")) return data; // Не зашифровано — возвращаем как есть
+
+        String decrypted = CryptoHelper.decrypt(data);
+        message.setDecryptedTextCache(decrypted); // Сохраняем в кэш
+        return decrypted;
+    }
+
+    private String getDecryptedReplyText(ChatMessage message) {
+        String cached = message.getDecryptedReplyTextCache();
+        if (cached != null) {
+            return cached;
+        }
+
+        String replyText = message.getReplyText();
+        if (replyText == null) return "";
+
+        String decrypted = CryptoHelper.decrypt(replyText);
+        message.setDecryptedReplyTextCache(decrypted);
+        return decrypted;
     }
 
 
@@ -212,22 +256,28 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
 
 
-        String encryptedData;
-        if (message.getSenderId().equals(currentUserId)) {
-            encryptedData = message.getTextSender();
-            if (encryptedData == null) encryptedData = message.getText();
+//        String encryptedData;
+//        if (message.getSenderId().equals(currentUserId)) {
+//            encryptedData = message.getTextSender();
+//            if (encryptedData == null) encryptedData = message.getText();
+//        } else {
+//            encryptedData = message.getText();
+//        }
+
+        if (message.getMessageId() != null && message.getMessageId().startsWith("TEMP_")) {
+            holder.itemView.setAlpha(0.5f);
         } else {
-            encryptedData = message.getText();
+            holder.itemView.setAlpha(1.0f);
         }
 
-        String rawEncrypted;
-        if (isMine) {
-            rawEncrypted = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
-        } else {
-            rawEncrypted = message.getText();
-        }
+//        String rawEncrypted;
+//        if (isMine) {
+//            rawEncrypted = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
+//        } else {
+//            rawEncrypted = message.getText();
+//        }
 
-        holder.tvTextMessage.setText(CryptoHelper.decrypt(rawEncrypted));
+        //holder.tvTextMessage.setText(CryptoHelper.decrypt(rawEncrypted));
 
         if (isSelected) {
             holder.itemView.setBackgroundColor(Color.parseColor("#1AE27950"));
@@ -246,8 +296,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.tvQuotedText.setTextColor(Color.WHITE); holder.tvQuotedText.setAlpha(0.8f);
             holder.itemView.findViewById(R.id.quoteLine).setBackgroundColor(Color.WHITE);
 
-            if (isUploading) holder.ivReadStatus.setVisibility(View.GONE);
-            else {
+            if (message.getMessageId() != null && message.getMessageId().startsWith("TEMP_")) {
+                holder.imageProgressBar.setVisibility(View.VISIBLE);
+                holder.contentLayout.setAlpha(0.6f);
+            } else {
                 holder.ivReadStatus.setVisibility(View.VISIBLE);
                 holder.ivReadStatus.setImageResource(message.isRead() ? R.drawable.ic_check_double : R.drawable.ic_check);
                 holder.ivReadStatus.setColorFilter(message.isRead() ? Color.parseColor("#4FC3F7") : Color.WHITE);
@@ -268,7 +320,22 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         holder.timeText.setText(sdf.format(message.getTimestamp()));
 
-        resetViewHolders(holder);
+        //resetViewHolders(holder);
+
+        holder.imageContainer.setVisibility(View.GONE);
+        holder.voiceLayout.setVisibility(View.GONE);
+        holder.fileLayout.setVisibility(View.GONE);
+        holder.postLayout.setVisibility(View.GONE);
+        holder.replyQuotedLayout.setVisibility(View.GONE);
+        holder.highlightOverlay.setVisibility(View.GONE);
+        holder.secretOverlay.setVisibility(View.GONE);
+        holder.ivTimerBadge.setVisibility(View.GONE);
+        holder.imageProgressBar.setVisibility(View.GONE);
+        holder.tvReactionBadge.setVisibility(View.GONE);
+        holder.ivReadStatus.setVisibility(View.GONE);
+        holder.chatAttachedImage.setImageDrawable(null);
+        holder.tvTextMessage.setVisibility(View.GONE);
+
 
         if (isHighlighted) {
             holder.highlightOverlay.setVisibility(View.VISIBLE);
@@ -294,7 +361,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
             }
 
-            holder.tvQuotedText.setText(CryptoHelper.decrypt(replyText));
+            holder.tvQuotedText.setText(getDecryptedReplyText(message));
             holder.replyQuotedLayout.setOnClickListener(v -> { if (actionListener != null) actionListener.onQuoteClicked(message.getReplyMessageId()); });
         }
 
@@ -307,43 +374,30 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.tvTextMessage.setText(getDecryptedContent(message));
         } else if ("image".equals(message.getType())) {
             holder.imageContainer.setVisibility(View.VISIBLE);
-            String currentUrl = (String) holder.chatAttachedImage.getTag();
-            if (currentUrl == null || !currentUrl.equals(message.getImageUrl())) {
-                Glide.with(context).load(message.getImageUrl()).dontAnimate().into(holder.chatAttachedImage);
-                holder.chatAttachedImage.setTag(message.getImageUrl());
-            }
-            if (message.getText() != null && !message.getText().isEmpty()) {
+
+            // Всегда показываем фото (никаких isOneTime)
+            String path = (message.getRemoteUrl() != null) ? message.getRemoteUrl() : message.getImageUrl();
+            com.bumptech.glide.Glide.with(context)
+                    .load(path)
+                    .into(holder.chatAttachedImage);
+
+            // Подпись (caption)
+            String caption = getDecryptedContent(message);
+            if (caption != null && !caption.isEmpty()) {
                 holder.tvTextMessage.setVisibility(View.VISIBLE);
-                holder.tvTextMessage.setText(getDecryptedContent(message));
+                holder.tvTextMessage.setText(caption);
+            } else {
+                holder.tvTextMessage.setVisibility(View.GONE);
             }
 
-            if (isUploading) {
-                holder.uploadOverlay.setVisibility(View.VISIBLE);
-                holder.btnCancelUpload.setOnClickListener(v -> actionListener.onCancelUpload(message.getMessageId()));
-            } else {
-                holder.imageContainer.setOnClickListener(v -> {
-                    if (isSelectionMode) {
-                        toggleSelection(message.getMessageId(), holder.getAdapterPosition());
-                    } else {
-                        actionListener.onImageClicked(holder.chatAttachedImage, message);
-                    }
-                });
-            }
-        } else if ("post".equals(message.getType())) {
-            holder.postLayout.setVisibility(View.VISIBLE);
-            loadPostDataOptimized(message.getPostId(), holder);
-            holder.postLayout.setOnClickListener(v -> {
-                if (isSelectionMode) toggleSelection(message.getMessageId(), holder.getAdapterPosition());
-                else {
-                    Intent intent = new Intent(context, ViewPostDetailsActivity.class);
-                    intent.putExtra("postId", message.getPostId());
-                    context.startActivity(intent);
-                }
+            // Клик — всегда обычный просмотр (через MediaBrowserActivity)
+            holder.imageContainer.setOnClickListener(v -> {
+                actionListener.onImageClicked(holder.chatAttachedImage, message);
             });
         } else if ("file".equals(message.getType())) {
             holder.fileLayout.setVisibility(View.VISIBLE);
 
-            String fileName = CryptoHelper.decrypt(message.getText());
+            String fileName = getDecryptedContent(message);
             holder.tvFileName.setText(fileName);
 
             if (isUploading) {
@@ -434,6 +488,24 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.tvReactionBadge.setVisibility(View.GONE);
         }
 
+        holder.itemView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        holder.contentLayout.setAlpha(0.7f);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        holder.contentLayout.setAlpha(1f);
+                        break;
+                    case MotionEvent.ACTION_CANCEL:
+                        holder.contentLayout.setAlpha(1f);
+                        break;
+                }
+                return false;
+            }
+        });
+
         holder.itemView.setOnLongClickListener(v -> {
             if (!isSelectionMode && message.getMessageId() != null && !isUploading) {
                 isSelectionMode = true;
@@ -450,7 +522,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             else showTelegramStyleMenu(message, isMine, holder.contentLayout);
         });
     }
-
 
     private void downloadFile(String url, String fileName) {
         try {
@@ -474,15 +545,18 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.tvTextMessage.setVisibility(View.GONE);
         holder.postLayout.setVisibility(View.GONE);
         holder.imageContainer.setVisibility(View.GONE);
-        holder.uploadOverlay.setVisibility(View.GONE);
+        holder.imageProgressBar.setVisibility(View.GONE);
+        holder.secretOverlay.setVisibility(View.GONE);
         holder.voiceLayout.setVisibility(View.GONE);
         holder.replyQuotedLayout.setVisibility(View.GONE);
         holder.highlightOverlay.setVisibility(View.GONE);
+        holder.ivTimerBadge.setVisibility(View.GONE);
         holder.itemView.setOnClickListener(null);
         holder.itemView.setOnLongClickListener(null);
         holder.tvReactionBadge.setOnClickListener(null);
         holder.chatAttachedImage.setTag(null);
         holder.fileLayout.setVisibility(View.GONE);
+        holder.itemView.setAlpha(1.0f);
     }
 
     private String formatVoiceTime(int totalMs) {
@@ -494,14 +568,51 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
      * |                           ВСПЛЫВАЮЩЕЕ МЕНЮ                            |
      * |-----------------------------------------------------------------------| */
     private void showTelegramStyleMenu(ChatMessage message, boolean isMine, View anchorView) {
+
+        // Если заблокировано открытие нового меню – просто выходим
+        if (dismissBlocked) return;
+
+        // Если уже есть открытое меню – закрываем его и блокируем открытие на 150 мс
+        if (currentMenu != null && currentMenu.isShowing()) {
+            currentMenu.dismiss();
+            currentMenu = null;
+            dismissBlocked = true;
+            dismissHandler.postDelayed(() -> dismissBlocked = false, 150);
+            // Проверяем то же самое сообщение (через обычный тег)
+            Object tag = anchorView.getTag();
+            if (tag instanceof String && tag.equals(message.getMessageId())) {
+                return; // просто закрыли, не открываем новое
+            }
+            return; // закрыли, новое меню не открываем (блокировка действует)
+        }
+
         int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
         int popupWidth = (int) (screenWidth * 0.7f);
 
         View popupView = LayoutInflater.from(context).inflate(R.layout.popup_telegram_menu, null);
+        popupView.setFocusable(false);
+        popupView.setFocusableInTouchMode(false);
 
-        PopupWindow popupWindow = new PopupWindow(popupView, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        PopupWindow popupWindow = new PopupWindow(popupView, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, false);
         popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popupWindow.setElevation(24f);
+        popupWindow.setOutsideTouchable(true);
+        popupWindow.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+
+        // Запоминаем ID сообщения через обычный тег
+        anchorView.setTag(message.getMessageId());
+
+        popupWindow.setOnDismissListener(() -> {
+            anchorView.setAlpha(1f);
+            anchorView.setTag(null);
+            if (currentMenu == popupWindow) {
+                currentMenu = null;
+            }
+            dismissBlocked = true;
+            dismissHandler.removeCallbacksAndMessages(null);
+            dismissHandler.postDelayed(() -> dismissBlocked = false, 150);
+        });
+
 
         LinearLayout reactionContainer = popupView.findViewById(R.id.reactionContainer);
         reactionContainer.setPadding(16, 16, 16, 16);
@@ -588,6 +699,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         popupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
         popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, x, y);
+
+        currentMenu = popupWindow;
+
     }
 
     private void addPopupMenuItem(LinearLayout parent, String text, View.OnClickListener listener) {
@@ -634,16 +748,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ConstraintLayout contentLayout;
-        LinearLayout postLayout, replyQuotedLayout, voiceLayout;
-        TextView tvTextMessage, postTitle, timeText, tvQuotedSender, tvQuotedText, tvReactionBadge, tvVoiceDuration;
-        ImageView postImage, chatAttachedImage, ivReadStatus, btnCancelUpload;
-        View highlightOverlay;
+        LinearLayout postLayout, replyQuotedLayout, voiceLayout, fileLayout;
+        TextView tvTextMessage, postTitle, timeText, tvQuotedSender, tvQuotedText, tvReactionBadge, tvVoiceDuration, tvFileName;
+        ImageView postImage, chatAttachedImage, ivReadStatus, ivFileIcon, ivTimerBadge;
+        View highlightOverlay, secretOverlay;
         MaterialCardView imageContainer;
-        FrameLayout uploadOverlay;
+        ProgressBar imageProgressBar;
         ImageButton btnPlayPause;
-        LinearLayout fileLayout;
-        TextView tvFileName;
-        ImageView ivFileIcon;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -661,14 +772,15 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             tvReactionBadge = itemView.findViewById(R.id.tvReactionBadge);
             ivReadStatus = itemView.findViewById(R.id.ivReadStatus);
             imageContainer = itemView.findViewById(R.id.imageContainer);
-            uploadOverlay = itemView.findViewById(R.id.uploadOverlay);
-            btnCancelUpload = itemView.findViewById(R.id.btnCancelUpload);
             voiceLayout = itemView.findViewById(R.id.voiceLayout);
             btnPlayPause = itemView.findViewById(R.id.btnPlayPause);
             tvVoiceDuration = itemView.findViewById(R.id.tvVoiceDuration);
             fileLayout = itemView.findViewById(R.id.fileLayout);
             tvFileName = itemView.findViewById(R.id.tvFileName);
             ivFileIcon = itemView.findViewById(R.id.ivFileIcon);
+            ivTimerBadge = itemView.findViewById(R.id.ivTimerBadge);
+            imageProgressBar = itemView.findViewById(R.id.imageProgressBar);
+            secretOverlay = itemView.findViewById(R.id.secretOverlay);
         }
     }
     private static class PostCacheData {

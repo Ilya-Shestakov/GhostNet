@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <com.github.chrisbanes.photoview.PhotoView
         android:id="@+id/photoView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitCenter" />
+
+    <ImageView
+        android:id="@+id/ivTimerBadge"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_margin="8dp"
+        android:src="@drawable/ic_timer"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/chatAttachedImage"
+        app:layout_constraintEnd_toEndOf="@id/chatAttachedImage"
+        app:tint="@color/white" />
 
 </FrameLayout>

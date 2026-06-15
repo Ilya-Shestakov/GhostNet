@@ -163,6 +163,19 @@ public class ChatListFragment extends Fragment {
         btnDelete.setOnClickListener(v -> {
             popupWindow.dismiss();
             chatsRef.child(item.chatId).removeValue();
+
+            FirebaseDatabase.getInstance().getReference("chats").child(item.chatId).removeValue();
+
+            new Thread(() -> {
+                com.example.mapmemories.database.AppDatabase.getDatabase(getContext())
+                        .localMessageDao().deleteMessagesByChatId(item.chatId);
+
+                getActivity().runOnUiThread(() -> {
+                    allChatListItems.remove(item);
+                    updateLocalFilter(searchInput.getText().toString());
+                });
+            }).start();
+
         });
 
         int[] location = new int[2];
@@ -394,6 +407,14 @@ public class ChatListFragment extends Fragment {
             }
             @Override public void afterTextChanged(Editable s) {}
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (chatListAdapter != null) {
+            chatListAdapter.notifyDataSetChanged();
+        }
     }
 
     private void updateLocalFilter(String query) {

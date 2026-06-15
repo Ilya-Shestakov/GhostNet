@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mapmemories.R;
+import com.example.mapmemories.systemHelpers.DraftManager;
 import com.example.mapmemories.systemHelpers.TimeFormatter;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -79,6 +80,9 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
             holder.avatar.setImageResource(R.drawable.ic_profile_placeholder);
         }
 
+        DraftManager draftManager = new DraftManager(context);
+        String draft = draftManager.getDraft(item.chatId);
+
         FirebaseDatabase.getInstance().getReference("users").child(item.user.getId())
                 .addValueEventListener(new ValueEventListener() {
                     @Override
@@ -94,26 +98,30 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
-        if (item.lastMessage != null) {
-            // 1. Определяем, какое поле расшифровывать (свое или чужое)
+        String previewText = "";
+        long timestamp = 0;
+
+        if (draft != null && !draft.isEmpty()) {
+            previewText = "Черновик: " + draft;
+            holder.previewText.setText(previewText);
+            holder.previewText.setTextColor(context.getResources().getColor(R.color.accent_coral));
+            holder.previewText.setTypeface(null, Typeface.ITALIC);
+            holder.readStatus.setVisibility(View.GONE);
+            holder.unreadBadge.setVisibility(View.GONE);
+            if (item.lastMessage != null) timestamp = item.lastMessage.getTimestamp();
+        } else if (item.lastMessage != null) {
             String rawEncrypted;
             String senderId = item.lastMessage.getSenderId();
 
             if (senderId != null && senderId.equals(currentUserId)) {
-                // Если последнее сообщение отправили МЫ - берем textSender
                 rawEncrypted = item.lastMessage.getTextSender();
-                // Если вдруг поле пустое (для старых сообщений), берем обычный text
                 if (rawEncrypted == null) rawEncrypted = item.lastMessage.getText();
             } else {
-                // Если последнее сообщение прислали НАМ - берем text
                 rawEncrypted = item.lastMessage.getText();
             }
 
-            // 2. Дешифруем
             String decryptedText = CryptoHelper.decrypt(rawEncrypted);
-            String previewText = "";
 
-            // 3. Формируем превью в зависимости от типа
             if ("image".equals(item.lastMessage.getType())) {
                 previewText = (decryptedText != null && !decryptedText.isEmpty()) ? "📷 " + decryptedText : "📷 Фотография";
             } else if ("post".equals(item.lastMessage.getType())) {
@@ -126,24 +134,12 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                 previewText = decryptedText != null ? decryptedText : "";
             }
 
-            // 4. Добавляем префикс "Вы: ", если отправитель - текущий юзер
             if (senderId != null && senderId.equals(currentUserId)) {
                 previewText = "Вы: " + previewText;
-
                 holder.readStatus.setVisibility(View.VISIBLE);
-                holder.unreadBadge.setVisibility(View.GONE);
-                holder.previewText.setTypeface(null, Typeface.NORMAL);
-                holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
-
-                if (item.lastMessage.isRead()) {
-                    holder.readStatus.setImageResource(R.drawable.ic_check_double);
-                } else {
-                    holder.readStatus.setImageResource(R.drawable.ic_check_single);
-                }
+                holder.readStatus.setImageResource(item.lastMessage.isRead() ? R.drawable.ic_check_double : R.drawable.ic_check_single);
             } else {
-                // Логика для входящих сообщений (непрочитанные и т.д.)
                 holder.readStatus.setVisibility(View.GONE);
-
                 if (item.unreadCount > 0) {
                     holder.unreadBadge.setVisibility(View.VISIBLE);
                     holder.unreadBadge.setText(String.valueOf(item.unreadCount));
@@ -151,26 +147,29 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
                     holder.previewText.setTextColor(context.getResources().getColor(R.color.text_primary));
                 } else {
                     holder.unreadBadge.setVisibility(View.GONE);
-                    holder.previewText.setTypeface(null, Typeface.NORMAL);
-                    holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
                 }
             }
 
             holder.previewText.setText(previewText);
-
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            holder.timeText.setText(sdf.format(item.lastMessage.getTimestamp()));
-
+            if (item.unreadCount <= 0) {
+                holder.previewText.setTypeface(null, Typeface.NORMAL);
+                holder.previewText.setTextColor(context.getResources().getColor(R.color.text_secondary));
+            }
+            timestamp = item.lastMessage.getTimestamp();
         } else {
-
             holder.previewText.setText("Нет сообщений");
-            holder.timeText.setText("");
             holder.readStatus.setVisibility(View.GONE);
             holder.unreadBadge.setVisibility(View.GONE);
         }
 
-        holder.itemView.setOnClickListener(v -> listener.onChatClick(item));
+        if (timestamp > 0) {
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            holder.timeText.setText(sdf.format(timestamp));
+        } else {
+            holder.timeText.setText("");
+        }
 
+        holder.itemView.setOnClickListener(v -> listener.onChatClick(item));
         holder.itemView.setOnLongClickListener(v -> {
             listener.onChatLongClick(item, v);
             return true;

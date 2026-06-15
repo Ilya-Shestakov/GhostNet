@@ -1,6 +1,11 @@
 package com.example.mapmemories.Chats;
 
-public class ChatMessage {
+import java.io.Serializable;
+
+public class ChatMessage implements Serializable{
+
+    private static final long serialVersionUID = 1L;
+
     private String messageId;
     private String senderId;
     private String receiverId;
@@ -17,6 +22,15 @@ public class ChatMessage {
     private String replySenderId;
     private String replyText;
     private String reaction;
+
+    private int selfDestructTime;
+
+    private boolean isOneTime;
+    public void setOneTime(boolean oneTime) { isOneTime = oneTime; }
+    private String remoteUrl;
+
+    public boolean isOneTime() { return isOneTime; }
+
 
     public ChatMessage() {
     }
@@ -48,12 +62,57 @@ public class ChatMessage {
         this.type = "post";
         this.read = false;
     }
+    public int getSelfDestructTime() { return selfDestructTime; }
+
+
+
+
+
+
+    private transient String decryptedTextCache;
+    private transient String decryptedFileNameCache;
+    private transient String decryptedReplyTextCache;
+
+    public String getDecryptedTextCache() {
+        return decryptedTextCache;
+    }
+
+    public void setDecryptedTextCache(String decryptedTextCache) {
+        this.decryptedTextCache = decryptedTextCache;
+    }
+
+    public String getDecryptedFileNameCache() {
+        return decryptedFileNameCache;
+    }
+
+    public void setDecryptedFileNameCache(String decryptedFileNameCache) {
+        this.decryptedFileNameCache = decryptedFileNameCache;
+    }
+
+    public String getDecryptedReplyTextCache() {
+        return decryptedReplyTextCache;
+    }
+
+    public void setDecryptedReplyTextCache(String decryptedReplyTextCache) {
+        this.decryptedReplyTextCache = decryptedReplyTextCache;
+    }
+
+
+
+
+
+
+    public void setSelfDestructTime(int selfDestructTime) { this.selfDestructTime = selfDestructTime; }
 
     public String getMessageId() { return messageId; }
-    public void setMessageId(String messageId) { this.messageId = messageId; }
 
+    public void setMessageId(String messageId) { this.messageId = messageId; }
     public String getSenderId() { return senderId; }
+
     public void setSenderId(String senderId) { this.senderId = senderId; }
+
+    public String getRemoteUrl() { return remoteUrl; }
+    public void setRemoteUrl(String remoteUrl) { this.remoteUrl = remoteUrl; }
 
     public String getReceiverId() { return receiverId; }
     public void setReceiverId(String receiverId) { this.receiverId = receiverId; }
@@ -93,4 +152,7 @@ public class ChatMessage {
 
     public String getReplyText() { return replyText; }
     public void setReplyText(String replyText) { this.replyText = replyText; }
+
+
+
 }

@@ -5,7 +5,7 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {OfflinePost.class, LocalMessage.class}, version = 2)
+@Database(entities = {OfflinePost.class, LocalMessage.class}, version = 5)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract OfflinePostDao offlinePostDao();
     public abstract LocalMessageDao localMessageDao();

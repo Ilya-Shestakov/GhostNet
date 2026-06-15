@@ -65,48 +65,55 @@
             </LinearLayout>
         </LinearLayout>
 
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/imageContainer"
-            android:layout_width="wrap_content"
+            android:layout_width="240dp"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="@android:color/transparent"
-            android:visibility="gone"
-            android:layout_marginBottom="4dp"
-            app:layout_constraintTop_toBottomOf="@id/replyQuotedLayout"
-            app:layout_constraintStart_toStartOf="parent">
-
-            <ImageView
-                android:id="@+id/chatAttachedImage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:adjustViewBounds="true"
-                android:maxWidth="250dp"
-                android:maxHeight="300dp"/>
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp">
 
             <FrameLayout
-                android:id="@+id/uploadOverlay"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#80000000"
-                android:visibility="gone">
-
-                <ProgressBar
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="center"
-                    android:indeterminateTint="#FFFFFF"/>
+                android:layout_height="wrap_content"
+                android:minHeight="150dp">
 
                 <ImageView
-                    android:id="@+id/btnCancelUpload"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:padding="16dp"
+                    android:id="@+id/chatAttachedImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:adjustViewBounds="true"
+                    android:scaleType="fitCenter"
+                    android:minHeight="100dp"
+                    android:maxHeight="400dp"
+                    android:background="#1AFFFFFF" />
+
+                <ProgressBar
+                    android:id="@+id/imageProgressBar"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
                     android:layout_gravity="center"
-                    android:src="@android:drawable/ic_menu_close_clear_cancel"
-                    app:tint="#FFFFFF"
-                    android:background="?attr/selectableItemBackgroundBorderless"/>
+                    android:indeterminateTint="@color/white"
+                    android:visibility="gone" />
+
+                <View
+                    android:id="@+id/secretOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#CC2C2C2E"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/ivTimerBadge"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="8dp"
+                    android:src="@drawable/ic_timer"
+                    android:visibility="gone"
+                    app:tint="@color/white" />
+
             </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 

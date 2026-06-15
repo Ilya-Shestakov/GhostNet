@@ -32,10 +32,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 
+import com.bumptech.glide.Glide;
 import com.example.mapmemories.LogRegStart.LoginActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.DialogHelper;
 import com.example.mapmemories.systemHelpers.LocalAccount;
+import com.example.mapmemories.systemHelpers.MediaCacheManager;
 import com.example.mapmemories.systemHelpers.MessageListenerService;
 import com.example.mapmemories.systemHelpers.MultiAccountManager;
 import com.example.mapmemories.systemHelpers.SwipeBackHelper;
@@ -438,7 +440,13 @@ public class Setting extends AppCompatActivity {
         });
 
         btnTextSize.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showTextSizeDialog(); });
-        btnClearCache.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); clearAppCache(); });
+        btnClearCache.setOnClickListener(v -> {
+            VibratorHelper.vibrate(this, 30);
+            MediaCacheManager.clearCache(this);
+
+            new Thread(() -> Glide.get(this).clearDiskCache()).start();
+            Toast.makeText(this, "Кэш медиа очищен", Toast.LENGTH_SHORT).show();
+        });
         btnSupport.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); contactSupport(); });
 
         btnLogout.setOnClickListener(v -> {

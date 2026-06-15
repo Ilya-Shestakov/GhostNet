@@ -1,10 +1,18 @@
 package com.example.mapmemories.Chats;
 
+import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
@@ -14,6 +22,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.renderscript.Allocation;
+import android.renderscript.Element;
+import android.renderscript.RenderScript;
+import android.renderscript.ScriptIntrinsicBlur;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -23,8 +35,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -33,6 +48,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,6 +68,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -62,8 +79,13 @@ import com.example.mapmemories.Profile.User;
 import com.example.mapmemories.Profile.UserProfileActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.Settings.Setting;
+import com.example.mapmemories.database.AppDatabase;
+import com.example.mapmemories.database.LocalMessage;
+import com.example.mapmemories.database.LocalMessageDao;
 import com.example.mapmemories.systemHelpers.AudioPlayerManager;
 import com.example.mapmemories.systemHelpers.CryptoHelper;
+import com.example.mapmemories.systemHelpers.DraftManager;
+import com.example.mapmemories.systemHelpers.MessageWorker;
 import com.example.mapmemories.systemHelpers.TimeFormatter;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.card.MaterialCardView;
@@ -82,6 +104,7 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -137,6 +160,8 @@ public class ChatActivity extends AppCompatActivity {
     private TextView tvReplySender, tvReplyText;
     private ImageButton btnCloseReply;
 
+    private DraftManager draftManager;
+
     public boolean isAudioManuallyPaused = false;
 
     private LinearLayout selectionToolbar;
@@ -152,11 +177,14 @@ public class ChatActivity extends AppCompatActivity {
     private String targetPublicKey;
 
     private ActivityResultLauncher<String> pickImageLauncher;
+    private ActivityResultLauncher<String> pickFileLauncher;
     private ActivityResultLauncher<String> requestMicLauncher;
 
     private Cloudinary cloudinary;
     private Map<String, java.util.concurrent.Future<?>> uploadTasks = new HashMap<>();
     private boolean isTargetUserHidden = false;
+
+    private Bitmap blurredScreenshot = null;
 
     //ГС
     private ImageButton btnRecordVoice;
@@ -180,7 +208,15 @@ public class ChatActivity extends AppCompatActivity {
     private android.widget.SeekBar gpSeekBar;
     private boolean isGlobalPlayerExpanded = false;
 
-    private ActivityResultLauncher<String> pickFileLauncher;
+    ImageView btnEditMedia;
+
+    private int currentTimerValue = 0;
+
+    private int windowStartOffset = 0;
+    private int windowSize = 40;
+
+    private boolean isLoadingMore = false;
+    private int previousFirstVisibleItem = RecyclerView.NO_POSITION;
 
     /* |-----------------------------------------------------------------------|
      * |                           ЖИЗНЕННЫЙ ЦИКЛ                          |
@@ -241,6 +277,11 @@ public class ChatActivity extends AppCompatActivity {
 
         initCloudinary();
         initViews();
+
+        DefaultItemAnimator animator = new DefaultItemAnimator();
+        animator.setAddDuration(300); // Длительность анимации появления
+        chatRecyclerView.setItemAnimator(animator);
+
         setupLaunchers();
         setupVoiceRecording();
 
@@ -251,7 +292,19 @@ public class ChatActivity extends AppCompatActivity {
 
         clearNotification();
 
+
+
     }
+
+    private final ActivityResultLauncher<Intent> mediaEditorLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    currentTimerValue = result.getData().getIntExtra("timerValue", 0);
+
+
+                    VibratorHelper.vibrate(this, 30);
+                }
+            });
 
     /* |-----------------------------------------------------------------------|
      * |                           ИНИЦИАЛИЗАЦИЯ                           |
@@ -277,6 +330,7 @@ public class ChatActivity extends AppCompatActivity {
         tvPinnedText = findViewById(R.id.tvPinnedText);
         btnUnpin = findViewById(R.id.btnUnpin);
 
+
         selectionToolbar = findViewById(R.id.selectionToolbar);
         tvSelectedCount = findViewById(R.id.tvSelectedCount);
         btnCloseSelection = findViewById(R.id.btnCloseSelection);
@@ -286,7 +340,9 @@ public class ChatActivity extends AppCompatActivity {
         btnSelectionDelete = findViewById(R.id.btnSelectionDelete);
 
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
-        chatRecyclerView.setItemAnimator(new DefaultItemAnimator());
+
+        chatRecyclerView.setItemAnimator(null);
+
         fabScrollDown = findViewById(R.id.fabScrollDown);
 
         textInputContainer = findViewById(R.id.textInputContainer);
@@ -329,6 +385,34 @@ public class ChatActivity extends AppCompatActivity {
 
         btnGalleryClose.setOnClickListener(v -> closeGallery());
 
+        btnEditMedia = findViewById(R.id.btnEditMedia);
+
+        FrameLayout loadingOverlay = findViewById(R.id.loadingOverlayContainer);
+        loadingOverlay.setVisibility(View.VISIBLE);
+
+        chatRecyclerView.setAlpha(0f);
+
+
+        draftManager = new DraftManager(this);
+
+        String savedDraft = draftManager.getDraft(chatId);
+        if (savedDraft != null) {
+            etMessageInput.setText(savedDraft);
+        }
+
+        String savedImgDraft = draftManager.getImageDraft(chatId);
+        if (savedImgDraft != null) {
+            selectedImageUri = Uri.parse(savedImgDraft);
+            imagePreviewContainer.setVisibility(View.VISIBLE);
+            Glide.with(this).load(selectedImageUri).into(ivPreviewImage);
+            updateInputUI();
+        }
+
+        DefaultItemAnimator animator = new DefaultItemAnimator();
+        animator.setAddDuration(150);
+        animator.setRemoveDuration(150);
+        chatRecyclerView.setItemAnimator(animator);
+
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
@@ -356,6 +440,7 @@ public class ChatActivity extends AppCompatActivity {
 
         btnRemoveImage.setOnClickListener(v -> {
             selectedImageUri = null;
+            draftManager.saveImageDraft(chatId, null); // Удаляем из черновика
             imagePreviewContainer.setVisibility(View.GONE);
             updateInputUI();
         });
@@ -372,7 +457,6 @@ public class ChatActivity extends AppCompatActivity {
         chatAdapter = new ChatAdapter(this, messageList, createChatActionListener());
         chatRecyclerView.setAdapter(chatAdapter);
 
-        // ПРОИГРЫВАТЕЛЬ ГС
         AudioPlayerManager.getInstance().setCallback(new AudioPlayerManager.PlayerCallback() {
             @Override
             public void onStateChanged(String messageId, boolean isPlaying) {
@@ -410,9 +494,34 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         chatRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                if (!recyclerView.canScrollVertically(1)) fabScrollDown.setVisibility(View.GONE);
-                else if (dy < 0) fabScrollDown.setVisibility(View.VISIBLE);
+            boolean fabVisible = false;
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                boolean atBottom = !recyclerView.canScrollVertically(1);
+                if (atBottom && fabVisible) {
+                    fabScrollDown.setVisibility(View.GONE);
+                    fabVisible = false;
+                } else if (!atBottom && !fabVisible) {
+                    fabScrollDown.setVisibility(View.VISIBLE);
+                    fabVisible = true;
+                }
+            }
+        });
+
+        chatRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager == null) return;
+
+                int firstVisibleItem = layoutManager.findFirstVisibleItemPosition();
+
+                // Если пользователь докрутил близко к началу окна — догружаем старые сообщения
+                if (firstVisibleItem <= 2 && !isLoadingMore && windowStartOffset > 0) {
+                    loadOlderMessages();
+                }
             }
         });
 
@@ -428,11 +537,11 @@ public class ChatActivity extends AppCompatActivity {
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeController);
         itemTouchHelper.attachToRecyclerView(chatRecyclerView);
 
-        chatRecyclerView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            if (bottom < oldBottom && !messageList.isEmpty()) {
-                chatRecyclerView.postDelayed(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1), 100);
-            }
-        });
+//        chatRecyclerView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+//            if (bottom < oldBottom && !messageList.isEmpty()) {
+//                chatRecyclerView.postDelayed(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1), 100);
+//            }
+//        });
 
         etMessageInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -442,6 +551,7 @@ public class ChatActivity extends AppCompatActivity {
                 typingHandler.removeCallbacks(typingRunnable);
                 typingRunnable = () -> typingRef.child(currentUserId).setValue("false");
                 typingHandler.postDelayed(typingRunnable, 2000);
+                draftManager.saveDraft(chatId, s.toString());
             }
             @Override public void afterTextChanged(Editable s) {}
         });
@@ -487,6 +597,8 @@ public class ChatActivity extends AppCompatActivity {
                 updateInputUI();
             }
         });
+
+
     }
 
     private void syncKeysIfNeeded() {
@@ -532,24 +644,107 @@ public class ChatActivity extends AppCompatActivity {
         }
     }
 
+    private void loadOlderMessages() {
+        if (isLoadingMore || windowStartOffset <= 0) return;
+        isLoadingMore = true;
+
+        // Запоминаем первый видимый элемент и его смещение до вставки
+        LinearLayoutManager layoutManager = (LinearLayoutManager) chatRecyclerView.getLayoutManager();
+        if (layoutManager != null) {
+            int firstVisiblePos = layoutManager.findFirstVisibleItemPosition();
+            View firstView = layoutManager.findViewByPosition(firstVisiblePos);
+            previousFirstVisibleItem = firstVisiblePos;
+            if (firstView != null) {
+                previousFirstVisibleItem = firstVisiblePos;
+            }
+        }
+
+        new Thread(() -> {
+            LocalMessageDao dao = AppDatabase.getDatabase(this).localMessageDao();
+
+            // Вычисляем offset для предыдущей порции
+            int loadCount = windowSize;
+            int newOffset = Math.max(0, windowStartOffset - loadCount);
+            int adjustedLoadCount = windowStartOffset - newOffset; // если упёрлись в 0
+
+            List<LocalMessage> olderMessages = dao.getMessagesWindow(chatId, adjustedLoadCount, newOffset);
+            if (olderMessages == null || olderMessages.isEmpty()) {
+                runOnUiThread(() -> isLoadingMore = false);
+                return;
+            }
+
+            // Расшифровываем в фоне
+            List<ChatMessage> newMessages = new ArrayList<>();
+            for (LocalMessage local : olderMessages) {
+                ChatMessage msg = new ChatMessage();
+                msg.setMessageId(local.messageId);
+                msg.setSenderId(local.senderId);
+                msg.setReceiverId(local.receiverId);
+                msg.setTimestamp(local.timestamp);
+                msg.setType(local.type);
+                msg.setText(local.text);
+                msg.setImageUrl(local.imageUrl);
+                msg.setRemoteUrl(local.remoteUrl);
+                msg.setSelfDestructTime(local.selfDestructTime);
+                msg.setOneTime(local.isOneTime);
+                decryptMessageFields(msg);
+                newMessages.add(msg);
+            }
+
+            runOnUiThread(() -> {
+                // Сохраняем позицию для восстановления скролла
+                int oldFirstVisible = layoutManager.findFirstVisibleItemPosition();
+                View oldFirstView = layoutManager.findViewByPosition(oldFirstVisible);
+                int offsetY = (oldFirstView != null) ? oldFirstView.getTop() : 0;
+
+                // Вставляем в начало списка
+                messageList.addAll(0, newMessages);
+                windowStartOffset = newOffset;
+
+                // Обновляем адаптер
+                List<ChatMessage> sorted = new ArrayList<>(messageList);
+                Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+                updateMessageList(sorted);
+
+                // Восстанавливаем позицию скролла
+                int newFirstVisible = oldFirstVisible + newMessages.size();
+                layoutManager.scrollToPositionWithOffset(newFirstVisible, offsetY);
+
+                isLoadingMore = false;
+            });
+        }).start();
+    }
+
     private void setupLaunchers() {
         pickImageLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
             if (uri != null) {
                 selectedImageUri = uri;
+                currentTimerValue = 0;
+
                 imagePreviewContainer.setVisibility(View.VISIBLE);
                 Glide.with(this).load(uri).into(ivPreviewImage);
                 updateInputUI();
-                etMessageInput.requestFocus();
+            }
+        });
+        pickFileLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        String fileName = getFileNameFromUri(uri);
+                        uploadFileToCloudinaryAndSend(uri, fileName);
+                    }
+                }
+        );
+        ivPreviewImage.setOnClickListener(v -> {
+            if (selectedImageUri != null) {
+                Intent intent = new Intent(this, MediaPreviewActivity.class);
+                intent.putExtra("imageUri", selectedImageUri.toString());
+                // Передаем текущие настройки, чтобы они не сбросились
+                mediaEditorLauncher.launch(intent);
             }
         });
         requestMicLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
             if (!isGranted) Toast.makeText(this, "Для отправки ГС нужен микрофон", Toast.LENGTH_SHORT).show();
-        });
-        pickFileLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
-            if (uri != null) {
-                String fileName = getFileNameFromUri(uri);
-                uploadFileToCloudinaryAndSend(uri, fileName);
-            }
         });
     }
 
@@ -580,6 +775,10 @@ public class ChatActivity extends AppCompatActivity {
                 System.currentTimeMillis(),
                 "file");
         tempMsg.setMessageId(tempMessageId);
+
+        String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
+        tempMsg.setTextSender(CryptoHelper.encryptForRecipient(fileName, myRealKey));
+
         attachReplyDataToMessage(tempMsg);
 
         messageList.add(tempMsg);
@@ -595,7 +794,6 @@ public class ChatActivity extends AppCompatActivity {
                 Map uploadResult = cloudinary.uploader().upload(inputStream, options);
                 String secureUrl = (String) uploadResult.get("secure_url");
 
-                String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
                 String encForReceiver = CryptoHelper.encryptForRecipient(fileName, targetPublicKey);
                 String encForSender = CryptoHelper.encryptForRecipient(fileName, myRealKey);
 
@@ -683,6 +881,42 @@ public class ChatActivity extends AppCompatActivity {
      * |                           ЛОГИКА АДАПТЕРА                         |
      * |-----------------------------------------------------------------------| */
 
+    private void updateMessageList(List<ChatMessage> newSortedMessages) {
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return messageList.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newSortedMessages.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                String oldId = messageList.get(oldItemPosition).getMessageId();
+                String newId = newSortedMessages.get(newItemPosition).getMessageId();
+                return oldId != null && oldId.equals(newId);
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                ChatMessage oldMsg = messageList.get(oldItemPosition);
+                ChatMessage newMsg = newSortedMessages.get(newItemPosition);
+                // Сравниваем только то, что влияет на отображение
+                return oldMsg.isRead() == newMsg.isRead()
+                        && java.util.Objects.equals(oldMsg.getReaction(), newMsg.getReaction())
+                        && java.util.Objects.equals(oldMsg.getText(), newMsg.getText())
+                        && java.util.Objects.equals(oldMsg.getDeletedBy(), newMsg.getDeletedBy());
+            }
+        });
+
+        messageList.clear();
+        messageList.addAll(newSortedMessages);
+        diffResult.dispatchUpdatesTo(chatAdapter);
+    }
+
     private ChatAdapter.ChatActionListener createChatActionListener() {
         return new ChatAdapter.ChatActionListener() {
             @Override
@@ -699,12 +933,15 @@ public class ChatActivity extends AppCompatActivity {
                     selectionToolbar.animate().alpha(0f).translationY(-50f).setDuration(200).withEndAction(() -> selectionToolbar.setVisibility(View.GONE)).start();
                 }
             }
+
             @Override
             public void onReactionSelected(ChatMessage message, String reaction) {
                 VibratorHelper.vibrate(ChatActivity.this, 20);
-                if (reaction == null) chatRef.child(message.getMessageId()).child("reaction").removeValue();
+                if (reaction == null)
+                    chatRef.child(message.getMessageId()).child("reaction").removeValue();
                 else chatRef.child(message.getMessageId()).child("reaction").setValue(reaction);
             }
+
             @Override
             public void onEditMessage(ChatMessage message) {
                 editingMessageId = message.getMessageId();
@@ -716,29 +953,82 @@ public class ChatActivity extends AppCompatActivity {
                 updateInputUI();
                 etMessageInput.requestFocus();
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) imm.showSoftInput(etMessageInput, InputMethodManager.SHOW_IMPLICIT);
+                if (imm != null)
+                    imm.showSoftInput(etMessageInput, InputMethodManager.SHOW_IMPLICIT);
             }
+
             @Override
             public void onDeleteMessage(ChatMessage message, boolean isMine) {
                 showPremiumDeleteDialog(message, isMine);
             }
+
             @Override
-            public void onPinMessage(ChatMessage message) { pinnedRef.setValue(message.getMessageId()); }
+            public void onPinMessage(ChatMessage message) {
+                pinnedRef.setValue(message.getMessageId());
+            }
+
             @Override
-            public void onMessageHighlighted(String messageId) { VibratorHelper.vibrate(ChatActivity.this, 20); }
+            public void onMessageHighlighted(String messageId) {
+                VibratorHelper.vibrate(ChatActivity.this, 20);
+            }
+
             @Override
-            public void onReplyMessage(ChatMessage message) { setupReplyPreview(message, false); }
+            public void onReplyMessage(ChatMessage message) {
+                setupReplyPreview(message, false);
+            }
+
             @Override
-            public void onQuoteClicked(String messageId) { scrollToAndHighlightMessage(messageId); }
+            public void onQuoteClicked(String messageId) {
+                scrollToAndHighlightMessage(messageId);
+            }
+
             @Override
             public void onCancelUpload(String messageId) {
                 java.util.concurrent.Future<?> task = uploadTasks.get(messageId);
-                if (task != null) { task.cancel(true); uploadTasks.remove(messageId); }
+                if (task != null) {
+                    task.cancel(true);
+                    uploadTasks.remove(messageId);
+                }
                 removeTempMessageLocally(messageId);
             }
+
             @Override
             public void onImageClicked(View thumbView, ChatMessage message) {
-                openGallery(thumbView, message);
+                List<ChatMessage> imagesOnly = new ArrayList<>();
+                int position = 0;
+                for (ChatMessage msg : messageList) {
+                    if ("image".equals(msg.getType())) {
+                        if (msg.getMessageId().equals(message.getMessageId())) {
+                            position = imagesOnly.size();
+                        }
+                        imagesOnly.add(msg);
+                    }
+                }
+
+                Intent intent = new Intent(ChatActivity.this, MediaBrowserActivity.class);
+                intent.putExtra("images", (java.io.Serializable) imagesOnly);
+                intent.putExtra("position", position);
+                intent.putExtra("chatId", chatId);
+
+                androidx.core.app.ActivityOptionsCompat options =
+                        androidx.core.app.ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                ChatActivity.this, thumbView, "photo_" + message.getMessageId());
+
+                startActivity(intent, options.toBundle());
+            }
+
+            @Override
+            public void onSecretImageClicked(View thumbView, ChatMessage message) {
+                Intent intent = new Intent(ChatActivity.this, OneTimeViewerActivity.class);
+                intent.putExtra("imageUrl", message.getRemoteUrl());
+                intent.putExtra("messageId", message.getMessageId());
+                intent.putExtra("chatId", chatId);
+                intent.putExtra("isSender", message.getSenderId().equals(currentUserId));
+
+                androidx.core.app.ActivityOptionsCompat options =
+                        androidx.core.app.ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                ChatActivity.this, thumbView, "shared_photo");
+                startActivity(intent, options.toBundle());
             }
         };
     }
@@ -868,10 +1158,38 @@ public class ChatActivity extends AppCompatActivity {
         };
 
         btnCancel.setOnClickListener(v -> closeDialog.run());
+
         btnDelete.setOnClickListener(v -> {
             closeDialog.run();
-            if (isMine && deleteForEveryone[0]) chatRef.child(message.getMessageId()).removeValue();
-            else chatRef.child(message.getMessageId()).child("deletedBy").setValue(currentUserId);
+
+            String msgId = message.getMessageId();
+
+            // 1. Удаление из Firebase
+            if (isMine && deleteForEveryone[0]) {
+                // Удаляем совсем для всех
+                chatRef.child(msgId).removeValue();
+            } else {
+                // Помечаем как удаленное для себя (или удаляем ветку, если хочешь радикально)
+                chatRef.child(msgId).child("deletedBy").setValue(currentUserId);
+            }
+
+            // 2. Удаление из локальной базы Room (ЧТОБЫ НЕ ВОСКРЕСЛО)
+            new Thread(() -> {
+                AppDatabase.getDatabase(this).localMessageDao().deleteById(msgId);
+
+                // 3. Обновляем список на экране
+                runOnUiThread(() -> {
+                    messageList.remove(message);
+                    List<ChatMessage> sorted = new ArrayList<>(messageList);
+                    Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+                    updateMessageList(sorted);
+
+                    // Если сообщений не осталось, показываем заглушку "Пусто"
+                    if (messageList.isEmpty()) {
+                        emptyChatContainer.setVisibility(View.VISIBLE);
+                    }
+                });
+            }).start();
         });
         rootLayout.setOnClickListener(v -> closeDialog.run());
 
@@ -880,6 +1198,23 @@ public class ChatActivity extends AppCompatActivity {
         });
         dialog.show();
     }
+
+
+    private Handler updateHandler = new Handler();
+    private Runnable pendingUpdate = null;
+
+    private void scheduleUpdate() {
+        if (pendingUpdate != null) {
+            updateHandler.removeCallbacks(pendingUpdate);
+        }
+        pendingUpdate = () -> {
+            List<ChatMessage> sorted = new ArrayList<>(messageList);
+            Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+            updateMessageList(sorted);
+        };
+        updateHandler.postDelayed(pendingUpdate, 100);
+    }
+
 
     private void setupSelectionActions() {
         btnCloseSelection.setOnClickListener(v -> chatAdapter.clearSelection());
@@ -902,9 +1237,26 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         btnSelectionDelete.setOnClickListener(v -> {
-            for (String id : chatAdapter.getSelectedMessageIds()) chatRef.child(id).child("deletedBy").setValue(currentUserId);
+            Set<String> selectedIds = chatAdapter.getSelectedMessageIds();
+
+            if (selectedIds.isEmpty()) return;
+
+            for (String id : selectedIds) {
+                chatRef.child(id).removeValue();
+
+                new Thread(() -> {
+                    AppDatabase.getDatabase(this).localMessageDao().deleteById(id);
+                }).start();
+            }
+
+            messageList.removeIf(msg -> selectedIds.contains(msg.getMessageId()));
+
             chatAdapter.clearSelection();
-            Toast.makeText(this, "Удалено у вас", Toast.LENGTH_SHORT).show();
+            List<ChatMessage> sorted = new ArrayList<>(messageList);
+            Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+            updateMessageList(sorted);
+
+            Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show();
         });
 
         btnSelectionReact.setOnClickListener(v -> {
@@ -993,7 +1345,7 @@ public class ChatActivity extends AppCompatActivity {
 
         btnFile.setOnClickListener(v -> {
             popupWindow.dismiss();
-            pickFileLauncher.launch("*/*"); // ЛЮБОЙ ТИП ФАЙЛА
+            pickFileLauncher.launch("*/*");
         });
 
         menuLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -1005,53 +1357,75 @@ public class ChatActivity extends AppCompatActivity {
      * |                           ГАЛЕРЕЯ И ЗУМ                               |
      * |-----------------------------------------------------------------------| */
 
+//    private void openGallery(View thumbView, ChatMessage clickedMessage) {
+//        if (isGalleryOpen) return;
+//        isGalleryOpen = true;
+//
+//        galleryImages.clear();
+//        int startIndex = 0;
+//        for (ChatMessage msg : messageList) {
+//            if ("image".equals(msg.getType()) && msg.getImageUrl() != null) {
+//                if (msg.getMessageId().equals(clickedMessage.getMessageId())) {
+//                    startIndex = galleryImages.size();
+//                }
+//                galleryImages.add(msg);
+//            }
+//        }
+//
+//        galleryAdapter = new GalleryAdapter(galleryImages);
+//        galleryViewPager.setAdapter(galleryAdapter);
+//        galleryViewPager.setCurrentItem(startIndex, false);
+//        updateGalleryCounter(startIndex);
+//
+//        galleryViewPager.registerOnPageChangeCallback(new androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
+//            @Override
+//            public void onPageSelected(int position) {
+//                updateGalleryCounter(position);
+//            }
+//        });
+//
+//        btnGalleryMenu.setOnClickListener(v -> showGalleryMenu(v, galleryImages.get(galleryViewPager.getCurrentItem())));
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//            android.graphics.RenderEffect blurEffect = android.graphics.RenderEffect.createBlurEffect(30f, 30f, android.graphics.Shader.TileMode.MIRROR);
+//            findViewById(R.id.appBarLayout).setRenderEffect(blurEffect);
+//            findViewById(R.id.chatRecyclerView).setRenderEffect(blurEffect);
+//            findViewById(R.id.bottomInputContainer).setRenderEffect(blurEffect);
+//        }
+//
+//        galleryContainer.setBackgroundColor(Color.BLACK);
+//        findViewById(R.id.galleryToolbar).setAlpha(1f);
+//
+//
+//        galleryContainer.setAlpha(0f);
+//        galleryContainer.setVisibility(View.VISIBLE);
+//        galleryContainer.animate()
+//                .alpha(1f)
+//                .setDuration(250)
+//                .start();
+//    }
+
+
     private void openGallery(View thumbView, ChatMessage clickedMessage) {
-        if (isGalleryOpen) return;
-        isGalleryOpen = true;
-
-        galleryImages.clear();
-        int startIndex = 0;
+        List<ChatMessage> imagesOnly = new ArrayList<>();
+        int position = 0;
         for (ChatMessage msg : messageList) {
-            if ("image".equals(msg.getType()) && msg.getImageUrl() != null) {
+            if ("image".equals(msg.getType())) {
                 if (msg.getMessageId().equals(clickedMessage.getMessageId())) {
-                    startIndex = galleryImages.size();
+                    position = imagesOnly.size();
                 }
-                galleryImages.add(msg);
+                imagesOnly.add(msg);
             }
         }
 
-        galleryAdapter = new GalleryAdapter(galleryImages);
-        galleryViewPager.setAdapter(galleryAdapter);
-        galleryViewPager.setCurrentItem(startIndex, false);
-        updateGalleryCounter(startIndex);
-
-        galleryViewPager.registerOnPageChangeCallback(new androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
-                updateGalleryCounter(position);
-            }
-        });
-
-        btnGalleryMenu.setOnClickListener(v -> showGalleryMenu(v, galleryImages.get(galleryViewPager.getCurrentItem())));
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            android.graphics.RenderEffect blurEffect = android.graphics.RenderEffect.createBlurEffect(30f, 30f, android.graphics.Shader.TileMode.MIRROR);
-            findViewById(R.id.appBarLayout).setRenderEffect(blurEffect);
-            findViewById(R.id.chatRecyclerView).setRenderEffect(blurEffect);
-            findViewById(R.id.bottomInputContainer).setRenderEffect(blurEffect);
-        }
-
-        galleryContainer.setBackgroundColor(Color.BLACK);
-        findViewById(R.id.galleryToolbar).setAlpha(1f);
-
-
-        galleryContainer.setAlpha(0f);
-        galleryContainer.setVisibility(View.VISIBLE);
-        galleryContainer.animate()
-                .alpha(1f)
-                .setDuration(250)
-                .start();
+        Intent intent = new Intent(this, MediaBrowserActivity.class);
+        intent.putExtra("images", (java.io.Serializable) imagesOnly);
+        intent.putExtra("position", position);
+        intent.putExtra("chatId", chatId); // ДОБАВЬ ЭТО
+        startActivity(intent);
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
+
 
     private void closeGallery() {
         if (!isGalleryOpen) return;
@@ -1263,6 +1637,7 @@ public class ChatActivity extends AppCompatActivity {
 
     /* |-----------------------------------------------------------------------|
      * |                           ЛОГИКА ЗАПИСИ ГС                        |
+     * |                           ЛОГИКА ЗАПИСИ ГС                        |
      * |-----------------------------------------------------------------------| */
 
     private void setupVoiceRecording() {
@@ -1284,19 +1659,16 @@ public class ChatActivity extends AppCompatActivity {
                             return true;
                         }
 
-                        if (ContextCompat.checkSelfPermission(ChatActivity.this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                            requestMicLauncher.launch(android.Manifest.permission.RECORD_AUDIO);
-                            return false;
-                        }
+                        boolean started = startRecording();
+                        if (!started) return false; // разрешения нет, ничего не делаем
+
+                        VibratorHelper.vibrate(ChatActivity.this, 50);
 
                         startY = event.getRawY(); startX = event.getRawX();
                         isCancelled = false;
                         lockedInThisGesture = false;
                         directionDecided = false;
                         movingUp = false;
-
-                        startRecording();
-                        VibratorHelper.vibrate(ChatActivity.this, 50);
 
                         btnRecordVoice.animate().scaleX(1.5f).scaleY(1.5f).setDuration(200).start();
 
@@ -1375,7 +1747,13 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
-    private void startRecording() {
+    private boolean startRecording() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestMicLauncher.launch(Manifest.permission.RECORD_AUDIO);
+            return false; // запись не началась
+        }
+
         isRecording = true;
         audioFilePath = getExternalCacheDir().getAbsolutePath() + "/voice_" + System.currentTimeMillis() + ".m4a";
         typingRef.child(currentUserId).setValue("recording");
@@ -1402,6 +1780,7 @@ public class ChatActivity extends AppCompatActivity {
             cancelRecording();
             Toast.makeText(this, "Ошибка микрофона", Toast.LENGTH_SHORT).show();
         }
+        return true;
     }
 
     private void cancelRecording() {
@@ -1611,6 +1990,10 @@ public class ChatActivity extends AppCompatActivity {
             attachReplyDataToMessage(message);
             chatRef.child(messageId).setValue(message);
             closeReplyPreview();
+
+            draftManager.clearDraft(chatId);
+            draftManager.saveImageDraft(chatId, null);
+
         } else {
             if (myRealKey == null) Toast.makeText(this, "Ошибка: локальный ключ не найден", Toast.LENGTH_SHORT).show();
             else Toast.makeText(this, "Ошибка: ключ собеседника еще загружается", Toast.LENGTH_SHORT).show();
@@ -1635,70 +2018,65 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void uploadImageToCloudinaryAndSend(Uri imageUri, String caption) {
-        String tempMessageId = "temp_" + System.currentTimeMillis();
+        scheduleBackgroundUpload(imageUri, "image", caption);
+    }
 
-        ChatMessage tempMsg = new ChatMessage(currentUserId, targetUserId, imageUri.toString(), CryptoHelper.encryptForRecipient(caption, targetPublicKey), System.currentTimeMillis(), "image");
-        tempMsg.setMessageId(tempMessageId);
-        attachReplyDataToMessage(tempMsg);
+    private void scheduleBackgroundUpload(Uri uri, String type, String caption) {
+        String tempId = "TEMP_" + System.currentTimeMillis();
 
-        messageList.add(tempMsg);
-        chatAdapter.addUploadingMessage(tempMessageId);
-        chatAdapter.notifyItemInserted(messageList.size() - 1);
-        chatRecyclerView.scrollToPosition(messageList.size() - 1);
+        LocalMessage local = new LocalMessage();
+        local.messageId = tempId;
+        local.chatId = chatId;
+        local.senderId = currentUserId;
+        local.receiverId = targetUserId;
+        local.text = caption;
+        local.imageUrl = uri.toString();
+        local.timestamp = System.currentTimeMillis();
+        local.type = type;
+        local.isPending = true;
 
-        Executors.newSingleThreadExecutor().submit(() -> {
-            try {
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                if (inputStream == null) {
-                    throw new Exception("Не удалось открыть файл по указанному Uri");
-                }
+        long currentTime = System.currentTimeMillis();
 
-                Map<String, Object> options = new HashMap<>();
-                options.put("resource_type", "auto");
+        new Thread(() -> {
+            AppDatabase.getDatabase(this).localMessageDao().insertSingleMessage(local);
+            runOnUiThread(() -> {
+                ChatMessage uiMsg = new ChatMessage(currentUserId, targetUserId, uri.toString(), caption, local.timestamp, type);
+                uiMsg.setMessageId(tempId);
+                uiMsg.setSelfDestructTime(currentTimerValue);
 
-                Map uploadResult = cloudinary.uploader().upload(inputStream, options);
-                String secureUrl = (String) uploadResult.get("secure_url");
+                messageList.add(uiMsg);
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                chatRecyclerView.scrollToPosition(messageList.size() - 1);
+                emptyChatContainer.setVisibility(View.GONE);
+            });
+        }).start();
 
-                String myRealKey = CryptoHelper.getLocalPublicKey(currentUserId);
-                String encForReceiver = CryptoHelper.encryptForRecipient(caption, targetPublicKey);
-                String encForSender = CryptoHelper.encryptForRecipient(caption, myRealKey);
+        androidx.work.Data inputData = new androidx.work.Data.Builder()
+                .putLong("timestamp", currentTime)
+                .putString("tempId", tempId)
+                .putString("uri", uri.toString())
+                .putString("type", type)
+                .putString("chatId", chatId)
+                .putString("senderId", currentUserId)
+                .putString("receiverId", targetUserId)
+                .putString("targetPubKey", targetPublicKey)
+                .putString("myPubKey", CryptoHelper.getLocalPublicKey(currentUserId))
+                .putString("caption", caption)
+                .putInt("selfDestructTime", currentTimerValue)
+                .build();
 
-                runOnUiThread(() -> {
-                    uploadTasks.remove(tempMessageId);
-                    removeTempMessageLocally(tempMessageId);
-                    if (!isFinishing() && !isDestroyed()) {
-                        String messageId = chatRef.push().getKey();
-                        if (messageId != null) {
-                            ChatMessage message = new ChatMessage(currentUserId, targetUserId, secureUrl, CryptoHelper.encryptForRecipient(caption, targetPublicKey), System.currentTimeMillis(), "image");
-                            message.setTextSender(encForSender);
-                            message.setMessageId(messageId);
+        androidx.work.OneTimeWorkRequest uploadRequest = new androidx.work.OneTimeWorkRequest.Builder(MessageWorker.class)
+                .setInputData(inputData)
+                .build();
+        androidx.work.WorkManager.getInstance(this).enqueue(uploadRequest);
 
-                            if (replyingToMessage != null) {
-                                message.setReplyMessageId(replyingToMessage.getMessageId());
-                                message.setReplySenderId(replyingToMessage.getSenderId());
-                                message.setReplyText(replyingToMessage.getText() != null ? replyingToMessage.getText() : "Вложение");
-                            }
-
-                            chatRef.child(messageId).setValue(message);
-                            closeReplyPreview();
-                        }
-                    }
-                });
-
-            } catch (Exception e) {
-                android.util.Log.e("CLOUDINARY_ERROR", "Ошибка при загрузке: ", e);
-
-                String errorMessage = e.getMessage();
-
-                runOnUiThread(() -> {
-                    uploadTasks.remove(tempMessageId);
-                    removeTempMessageLocally(tempMessageId);
-
-                    String userFriendlyError = "Ошибка: " + (errorMessage != null ? errorMessage : "Неизвестная ошибка");
-                    Toast.makeText(ChatActivity.this, userFriendlyError, Toast.LENGTH_LONG).show();
-                });
-            }
-        });
+        etMessageInput.setText("");
+        selectedImageUri = null;
+        imagePreviewContainer.setVisibility(View.GONE);
+        draftManager.clearDraft(chatId);
+        draftManager.saveImageDraft(chatId, null);
+        currentTimerValue = 0;
+        updateInputUI();
     }
 
     private void removeTempMessageLocally(String tempId) {
@@ -1711,6 +2089,7 @@ public class ChatActivity extends AppCompatActivity {
             }
         }
     }
+
 
     private boolean playNextVoiceMessage(String currentId) {
         if (messageList == null || messageList.isEmpty()) return false;
@@ -1825,35 +2204,100 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void loadMessagesOptimized() {
-        // 1. Сначала загружаем историю из Room
         new Thread(() -> {
-            com.example.mapmemories.database.LocalMessageDao dao =
-                    com.example.mapmemories.database.AppDatabase.getDatabase(this).localMessageDao();
-            java.util.List<com.example.mapmemories.database.LocalMessage> localHistory = dao.getMessagesForChat(chatId);
+            LocalMessageDao dao = AppDatabase.getDatabase(this).localMessageDao();
+
+            // 1. Узнаём общее количество сообщений в чате
+            int totalCount = dao.getMessageCount(chatId);  // Нужно добавить этот метод (см. ниже)
+
+            // 2. Вычисляем offset так, чтобы взять последние windowSize сообщений
+            int offset = Math.max(0, totalCount - windowSize);
+
+            // 3. Загружаем только окно
+            List<LocalMessage> localWindow = dao.getMessagesWindow(chatId, windowSize, offset);
+            windowStartOffset = offset; // запоминаем, где начало окна
+
+            // 4. Создаём ChatMessage и расшифровываем в фоне
+            List<ChatMessage> loadedMessages = new ArrayList<>();
+            for (LocalMessage local : localWindow) {
+                ChatMessage msg = new ChatMessage();
+                msg.setMessageId(local.messageId);
+                msg.setSenderId(local.senderId);
+                msg.setReceiverId(local.receiverId);
+                msg.setTimestamp(local.timestamp);
+                msg.setType(local.type);
+                msg.setText(local.text);
+                msg.setImageUrl(local.imageUrl);
+                msg.setRemoteUrl(local.remoteUrl);
+                msg.setSelfDestructTime(local.selfDestructTime);
+                msg.setOneTime(local.isOneTime);
+                // Расшифровываем в фоне
+                decryptMessageFields(msg);
+                loadedMessages.add(msg);
+            }
 
             runOnUiThread(() -> {
-                for (com.example.mapmemories.database.LocalMessage local : localHistory) {
-                    // Превращаем локальное сообщение обратно в объект ChatMessage для адаптера
-                    ChatMessage msg = new ChatMessage();
-                    msg.setMessageId(local.messageId);
-                    msg.setSenderId(local.senderId);
-                    msg.setReceiverId(local.receiverId);
-                    msg.setTimestamp(local.timestamp);
-                    msg.setType(local.type);
-                    // ВАЖНО: помечаем текст как уже расшифрованный, чтобы адаптер его не трогал
-                    msg.setText(local.text);
+                // Очищаем старый список и загружаем окно
+                messageList.clear();
+                messageList.addAll(loadedMessages);
 
-                    messageList.add(msg);
-                }
-                chatAdapter.notifyDataSetChanged();
-                if (!messageList.isEmpty()) {
+                // Сортируем и обновляем адаптер
+                List<ChatMessage> sorted = new ArrayList<>(messageList);
+                Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+                updateMessageList(sorted);
+
+                // Если окно пустое – показываем заглушку
+                if (messageList.isEmpty()) {
+                    emptyChatContainer.setVisibility(View.VISIBLE);
+                } else {
                     chatRecyclerView.scrollToPosition(messageList.size() - 1);
                     emptyChatContainer.setVisibility(View.GONE);
                 }
 
+                // Запускаем слушатель Firebase и анимацию
                 startFirebaseListener();
+                runCurtainAnimation();
             });
         }).start();
+    }
+
+//    private void performFullDelete(ChatMessage message) {
+//
+//        chatRef.child(message.getMessageId()).removeValue();
+//
+//        new Thread(() -> {
+//            AppDatabase.getDatabase(this).localMessageDao().deleteById(message.getMessageId());
+//            runOnUiThread(() -> {
+//                messageList.remove(message);
+//                chatAdapter.notifyDataSetChanged();
+//            });
+//        }).start();
+//    }
+
+
+    private void runCurtainAnimation() {
+        FrameLayout overlay = findViewById(R.id.loadingOverlayContainer);
+        ProgressBar progressBar = findViewById(R.id.loadingProgressBar);
+
+        overlay.postDelayed(() -> {
+            ObjectAnimator progressAnim = ObjectAnimator.ofInt(progressBar, "progress", 0, 100);
+            progressAnim.setDuration(600);
+            progressAnim.setInterpolator(new DecelerateInterpolator());
+
+            progressAnim.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    overlay.animate()
+                            .translationY(-overlay.getHeight())
+                            .setDuration(400)
+                            .setInterpolator(new AccelerateInterpolator())
+                            .withEndAction(() -> overlay.setVisibility(View.GONE))
+                            .start();
+                    chatRecyclerView.animate().alpha(1f).setDuration(400).start();
+                }
+            });
+            progressAnim.start();
+        }, 100);
     }
 
     private void startFirebaseListener() {
@@ -1861,34 +2305,83 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                 ChatMessage msg = snapshot.getValue(ChatMessage.class);
-                if (msg != null) {
-                    // ПРОВЕРКА: если это сообщение уже есть в списке (загружено из Room), игнорируем его
-                    for (ChatMessage existing : messageList) {
-                        if (existing.getMessageId().equals(msg.getMessageId())) return;
-                    }
+                if (msg == null) return;
 
-                    // Обработка нового сообщения (как было раньше)
-                    if (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId)) {
-                        if (currentUserId.equals(msg.getReceiverId()) && !msg.isRead()) {
+                // Расшифровываем в фоне, потом добавляем в список на UI
+                new Thread(() -> {
+                    decryptMessageFields(msg);
+                    runOnUiThread(() -> {
+                        if (msg.getDeletedBy() != null && msg.getDeletedBy().equals(currentUserId)) {
+                            return; // удалено для нас – не показываем
+                        }
+
+                        // Проверка на дубликат
+                        int existingIndex = -1;
+                        for (int i = 0; i < messageList.size(); i++) {
+                            ChatMessage existing = messageList.get(i);
+                            if (existing.getMessageId() != null && existing.getMessageId().equals(msg.getMessageId())) {
+                                existingIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (existingIndex != -1) {
+                            messageList.set(existingIndex, msg);
+                        } else {
+                            messageList.add(msg);
+                            emptyChatContainer.setVisibility(View.GONE);
+                        }
+
+                        // Помечаем прочитанным
+                        if (msg.getReceiverId() != null && msg.getReceiverId().equals(currentUserId) && !msg.isRead()) {
                             snapshot.getRef().child("read").setValue(true);
                             msg.setRead(true);
                         }
-                        messageList.add(msg);
-                        chatAdapter.notifyItemInserted(messageList.size() - 1);
-                        chatRecyclerView.scrollToPosition(messageList.size() - 1);
-                        emptyChatContainer.setVisibility(View.GONE);
+
+                        //scheduleUpdate();
+
+                        List<ChatMessage> sorted = new ArrayList<>(messageList);
+                        Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+                        updateMessageList(sorted);
+                        chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
+
+
+
+                        chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
+                    });
+                }).start();
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                ChatMessage updatedMsg = snapshot.getValue(ChatMessage.class);
+                if (updatedMsg == null || updatedMsg.getMessageId() == null) return;
+                for (int i = 0; i < messageList.size(); i++) {
+                    ChatMessage local = messageList.get(i);
+                    if (local.getMessageId() != null && local.getMessageId().equals(updatedMsg.getMessageId())) {
+                        local.setRead(updatedMsg.isRead());
+                        local.setReaction(updatedMsg.getReaction());
+                        local.setText(updatedMsg.getText());
+                        local.setTextSender(updatedMsg.getTextSender());
+                        local.setDeletedBy(updatedMsg.getDeletedBy());
+                        local.setDecryptedTextCache(null);
+                        local.setDecryptedReplyTextCache(null);
+                        chatAdapter.notifyItemChanged(i);
+                        break;
                     }
                 }
             }
 
             @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-            }
-
-            @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-
+                String id = snapshot.getKey();
+                for (int i = 0; i < messageList.size(); i++) {
+                    if (messageList.get(i).getMessageId().equals(id)) {
+                        messageList.remove(i);
+                        chatAdapter.notifyItemRemoved(i);
+                        break;
+                    }
+                }
             }
 
             @Override
@@ -1900,6 +2393,7 @@ public class ChatActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {
 
             }
+
         });
     }
 
@@ -1937,6 +2431,11 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
+
+    private void sortMessagesAndNotify() {
+        java.util.Collections.sort(messageList, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+        chatAdapter.notifyDataSetChanged();
+    }
 
 
 
@@ -1976,13 +2475,21 @@ public class ChatActivity extends AppCompatActivity {
                 }
 
                 if (isSwipingToClose) {
+                    dx = ev.getRawX() - startX;
                     rootLayout.setTranslationX(Math.max(0, dx * 1.2f));
+
+                    if (isSwipingToClose) {
+                        dx = ev.getRawX() - startX;
+                        rootLayout.setTranslationX(Math.max(0, dx * 1.2f));
+                        return true;
+                    }
+
                     return true;
                 }
                 break;
 
-            case android.view.MotionEvent.ACTION_UP:
-            case android.view.MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
                 if (isSwipingToClose) {
                     float dxUp = ev.getRawX() - startX;
 
@@ -1990,17 +2497,12 @@ public class ChatActivity extends AppCompatActivity {
                         rootLayout.animate()
                                 .translationX(screenWidth)
                                 .setDuration(150)
-                                .setInterpolator(new android.view.animation.AccelerateInterpolator())
                                 .withEndAction(() -> {
                                     finish();
                                     overridePendingTransition(0, 0);
                                 }).start();
                     } else {
-                        rootLayout.animate()
-                                .translationX(0)
-                                .setDuration(150)
-                                .setInterpolator(new android.view.animation.DecelerateInterpolator())
-                                .start();
+                        rootLayout.animate().translationX(0).setDuration(150).start();
                     }
                     isSwipingToClose = false;
                     return true;
@@ -2009,6 +2511,47 @@ public class ChatActivity extends AppCompatActivity {
         }
         return super.dispatchTouchEvent(ev);
     }
+
+
+
+
+
+
+    private void decryptMessageFields(ChatMessage msg) {
+        if (msg == null) return;
+
+        // Основной текст (и подпись к фото, и имя файла – все лежат в text)
+        String rawText = null;
+        if (msg.getSenderId() != null && msg.getSenderId().equals(currentUserId)) {
+            rawText = msg.getTextSender() != null ? msg.getTextSender() : msg.getText();
+        } else {
+            rawText = msg.getText();
+        }
+
+        if (rawText != null) {
+            if (rawText.startsWith("ENC_V3:")) {
+                msg.setDecryptedTextCache(CryptoHelper.decrypt(rawText));
+            } else {
+                msg.setDecryptedTextCache(rawText);
+            }
+        }
+
+        // Текст цитаты
+        String replyRaw = msg.getReplyText();
+        if (replyRaw != null) {
+            if (replyRaw.startsWith("ENC_V3:")) {
+                msg.setDecryptedReplyTextCache(CryptoHelper.decrypt(replyRaw));
+            } else {
+                msg.setDecryptedReplyTextCache(replyRaw);
+            }
+        }
+    }
+
+
+
+
+
+
 
     @Override
     public void onBackPressed() {
@@ -2068,9 +2611,9 @@ public class ChatActivity extends AppCompatActivity {
         super.onDestroy();
         AudioPlayerManager.getInstance().stop();
         typingRef.child(currentUserId).setValue("false");
-        for (java.util.concurrent.Future<?> task : uploadTasks.values()) {
-            if (task != null) task.cancel(true);
-        }
+//        for (java.util.concurrent.Future<?> task : uploadTasks.values()) {
+//            if (task != null) task.cancel(true);
+//        }
         if (targetUserRef != null && statusListener != null) targetUserRef.removeEventListener(statusListener);
         if (chatRef != null && messagesListener != null) chatRef.removeEventListener(messagesListener);
         if (pinnedRef != null && pinnedListener != null) pinnedRef.removeEventListener(pinnedListener);

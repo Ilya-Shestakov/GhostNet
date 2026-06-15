@@ -109,6 +109,9 @@ public class CreatePostActivity extends AppCompatActivity {
         setupLaunchers();
         setupListeners();
 
+        SwitchMaterial switchPrivacy = findViewById(R.id.switchPrivacy);
+        switchPrivacy.setChecked(true);
+
         swipeBackHelper = new SwipeBackHelper(this);
 
         if (savedInstanceState == null && getIntent().hasExtra("revealX")) {

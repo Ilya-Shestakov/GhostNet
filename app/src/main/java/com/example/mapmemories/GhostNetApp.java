@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 
 import com.google.firebase.database.FirebaseDatabase;
 
-public class MapMemoriesApp extends Application {
+public class GhostNetApp extends Application {
 
     @Override
     public void onCreate() {

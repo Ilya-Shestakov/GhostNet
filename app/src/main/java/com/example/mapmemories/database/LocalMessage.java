@@ -13,8 +13,13 @@ public class LocalMessage {
     public String senderId;
     public String receiverId;
     public String text;
+    public String imageUrl;
+    public String remoteUrl;
     public long timestamp;
     public String type;
+    public boolean isPending;
+    public int selfDestructTime;
+    public boolean isOneTime;
 
     public LocalMessage() {}
 }

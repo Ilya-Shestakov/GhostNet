@@ -403,18 +403,45 @@
             android:visibility="gone">
 
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                android:layout_width="90dp"
+                android:layout_height="90dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent">
-                <ImageView
-                    android:id="@+id/ivPreviewImage"
+
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop" />
+                    android:layout_height="match_parent">
+
+                    <ImageView
+                        android:id="@+id/ivPreviewImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#33000000" />
+
+                    <ImageView
+                        android:id="@+id/btnEditMedia"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:padding="6dp"
+                        android:src="@drawable/ic_setting"
+                        android:background="@drawable/circle_background"
+                        android:backgroundTint="#80000000"
+                        app:tint="@color/white"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:visibility="gone"
+                        />
+
+                </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <ImageButton
@@ -423,13 +450,15 @@
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 android:background="@drawable/circle_background"
-                android:backgroundTint="#80000000"
+                android:backgroundTint="#CCFF3B30"
                 app:tint="@android:color/white"
                 android:padding="4dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginStart="64dp"
-                android:layout_marginTop="-4dp"/>
+                android:layout_marginStart="78dp"
+                android:layout_marginTop="-6dp"
+                android:elevation="6dp"/>
+
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -703,4 +732,39 @@
                 app:tint="@android:color/white" />
         </LinearLayout>
     </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/loadingOverlayContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintBottom_toTopOf="@id/bottomInputContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/loadingOverlayImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/chat_curtain"
+            android:scaleType="fitXY" />
+
+        <ProgressBar
+            android:id="@+id/loadingProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:paddingHorizontal="50dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center_horizontal|top"
+            android:layout_marginTop="96dp"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#E0FFFFFF"
+            android:progressBackgroundTint="#33FFFFFF"
+            android:indeterminate="false" />
+
+    </FrameLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
