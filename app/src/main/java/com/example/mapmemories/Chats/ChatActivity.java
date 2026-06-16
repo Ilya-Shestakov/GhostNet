@@ -461,8 +461,9 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         DefaultItemAnimator animator = new DefaultItemAnimator();
-        animator.setAddDuration(150);
-        animator.setRemoveDuration(150);
+        animator.setAddDuration(200);
+        animator.setRemoveDuration(200);
+        animator.setMoveDuration(200);
         chatRecyclerView.setItemAnimator(animator);
 
         try {
@@ -476,7 +477,7 @@ public class ChatActivity extends AppCompatActivity {
 
         setupGlobalPlayer();
 
-        setupSelectionActions();
+        //setupSelectionActions();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -508,6 +509,10 @@ public class ChatActivity extends AppCompatActivity {
         messageList = new ArrayList<>();
         chatAdapter = new ChatAdapter(this, messageList, createChatActionListener());
         chatRecyclerView.setAdapter(chatAdapter);
+
+        if (chatAdapter != null) {
+            setupSelectionActions();
+        }
 
         AudioPlayerManager.getInstance().setCallback(new AudioPlayerManager.PlayerCallback() {
             @Override
@@ -1386,7 +1391,6 @@ public class ChatActivity extends AppCompatActivity {
 
             String msgId = message.getMessageId();
 
-            // 1. Удаление из Firebase
             if (isMine && deleteForEveryone[0]) {
                 // Удаляем совсем для всех
                 chatRef.child(msgId).removeValue();
@@ -1395,18 +1399,15 @@ public class ChatActivity extends AppCompatActivity {
                 chatRef.child(msgId).child("deletedBy").setValue(currentUserId);
             }
 
-            // 2. Удаление из локальной базы Room (ЧТОБЫ НЕ ВОСКРЕСЛО)
             new Thread(() -> {
                 AppDatabase.getDatabase(this).localMessageDao().deleteById(msgId);
 
-                // 3. Обновляем список на экране
                 runOnUiThread(() -> {
-                    messageList.remove(message);
-                    List<ChatMessage> sorted = new ArrayList<>(messageList);
-                    Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
-                    updateMessageList(sorted);
-
-                    // Если сообщений не осталось, показываем заглушку "Пусто"
+                    int position = messageList.indexOf(message);
+                    if (position >= 0) {
+                        messageList.remove(position);
+                        chatAdapter.notifyItemRemoved(position);
+                    }
                     if (messageList.isEmpty()) {
                         emptyChatContainer.setVisibility(View.VISIBLE);
                     }
@@ -1439,10 +1440,12 @@ public class ChatActivity extends AppCompatActivity {
 
 
     private void setupSelectionActions() {
+
+        Set<String> selectedIds = chatAdapter.getSelectedMessageIds();
+
         btnCloseSelection.setOnClickListener(v -> chatAdapter.clearSelection());
 
         btnSelectionCopy.setOnClickListener(v -> {
-            Set<String> selectedIds = chatAdapter.getSelectedMessageIds();
             StringBuilder sb = new StringBuilder();
             for (ChatMessage msg : messageList) {
                 if (selectedIds.contains(msg.getMessageId()) && "text".equals(msg.getType())) {
@@ -1459,26 +1462,38 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         btnSelectionDelete.setOnClickListener(v -> {
-            Set<String> selectedIds = chatAdapter.getSelectedMessageIds();
-
             if (selectedIds.isEmpty()) return;
 
+            // Сохраняем ID выбранных сообщений и находим их позиции
+            List<Integer> positionsToRemove = new ArrayList<>();
+            for (int i = 0; i < messageList.size(); i++) {
+                if (selectedIds.contains(messageList.get(i).getMessageId())) {
+                    positionsToRemove.add(i);
+                }
+            }
+
+            // Удаляем из Firebase и Room в фоне
             for (String id : selectedIds) {
                 chatRef.child(id).removeValue();
-
                 new Thread(() -> {
-                    AppDatabase.getDatabase(this).localMessageDao().deleteById(id);
+                    AppDatabase.getDatabase(ChatActivity.this).localMessageDao().deleteById(id);
                 }).start();
             }
 
-            messageList.removeIf(msg -> selectedIds.contains(msg.getMessageId()));
-
+            // Удаляем из локального списка и анимируем
             chatAdapter.clearSelection();
-            List<ChatMessage> sorted = new ArrayList<>(messageList);
-            Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
-            updateMessageList(sorted);
+            // Удаляем в обратном порядке, чтобы не сбивались индексы
+            Collections.sort(positionsToRemove, Collections.reverseOrder());
+            for (int pos : positionsToRemove) {
+                if (pos >= 0 && pos < messageList.size()) {
+                    messageList.remove(pos);
+                    chatAdapter.notifyItemRemoved(pos);
+                }
+            }
 
-            Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show();
+            if (messageList.isEmpty()) {
+                emptyChatContainer.setVisibility(View.VISIBLE);
+            }
         });
 
         btnSelectionReact.setOnClickListener(v -> {
@@ -2459,24 +2474,18 @@ public class ChatActivity extends AppCompatActivity {
             }
 
             runOnUiThread(() -> {
-                // Очищаем старый список и загружаем окно
                 messageList.clear();
                 messageList.addAll(loadedMessages);
 
-                // Сортируем и обновляем адаптер
                 List<ChatMessage> sorted = new ArrayList<>(messageList);
                 Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
                 updateMessageList(sorted);
 
-                // Если окно пустое – показываем заглушку
-                if (messageList.isEmpty()) {
-                    emptyChatContainer.setVisibility(View.VISIBLE);
-                } else {
+                if (!messageList.isEmpty()) {
                     chatRecyclerView.scrollToPosition(messageList.size() - 1);
                     emptyChatContainer.setVisibility(View.GONE);
                 }
 
-                // Запускаем слушатель Firebase и анимацию
                 startFirebaseListener();
                 runCurtainAnimation();
             });
@@ -2513,8 +2522,14 @@ public class ChatActivity extends AppCompatActivity {
                             .translationY(-overlay.getHeight())
                             .setDuration(400)
                             .setInterpolator(new AccelerateInterpolator())
-                            .withEndAction(() -> overlay.setVisibility(View.GONE))
+                            .withEndAction(() -> {
+                                overlay.setVisibility(View.GONE);
+                                if (messageList.isEmpty()) {
+                                    emptyChatContainer.setVisibility(View.VISIBLE);
+                                }
+                            })
                             .start();
+
                     chatRecyclerView.animate().alpha(1f).setDuration(400).start();
                 }
             });
@@ -2547,28 +2562,49 @@ public class ChatActivity extends AppCompatActivity {
                             }
                         }
 
+// Если нашли TEMP_ по timestamp, заменяем его реальным сообщением
+                        if (existingIndex == -1) {
+                            for (int i = 0; i < messageList.size(); i++) {
+                                ChatMessage existing = messageList.get(i);
+                                if (existing.getMessageId().startsWith("TEMP_") && existing.getTimestamp() == msg.getTimestamp()) {
+                                    existingIndex = i;
+                                    break;
+                                }
+                            }
+                            if (existingIndex != -1) {
+                                // Убираем временное сообщение из индикаторов загрузки
+                                String oldTempId = messageList.get(existingIndex).getMessageId();
+                                chatAdapter.removeUploadingMessage(oldTempId);
+                                // Заменяем на реальное
+                                messageList.set(existingIndex, msg);
+                                chatAdapter.notifyItemChanged(existingIndex);
+                                // Помечаем прочитанным (как обычно)
+                                if (msg.getReceiverId() != null && msg.getReceiverId().equals(currentUserId) && !msg.isRead()) {
+                                    snapshot.getRef().child("read").setValue(true);
+                                    msg.setRead(true);
+                                }
+                                scheduleUpdate();
+                                chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
+                                return; // выходим, чтобы не добавлять второй раз
+                            }
+                        }
+
+// Если это не TEMP_ замена, обрабатываем как обычно
                         if (existingIndex != -1) {
                             messageList.set(existingIndex, msg);
                         } else {
-                            messageList.add(msg);
-                            emptyChatContainer.setVisibility(View.GONE);
+                            if (msg.getDeletedBy() == null || !msg.getDeletedBy().equals(currentUserId)) {
+                                messageList.add(msg);
+                                emptyChatContainer.setVisibility(View.GONE);
+                            }
                         }
 
-                        // Помечаем прочитанным
                         if (msg.getReceiverId() != null && msg.getReceiverId().equals(currentUserId) && !msg.isRead()) {
                             snapshot.getRef().child("read").setValue(true);
                             msg.setRead(true);
                         }
 
-                        //scheduleUpdate();
-
-                        List<ChatMessage> sorted = new ArrayList<>(messageList);
-                        Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
-                        updateMessageList(sorted);
-                        chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
-
-
-
+                        scheduleUpdate();
                         chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
                     });
                 }).start();
@@ -2619,6 +2655,20 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
+    private String decryptMessageText(ChatMessage msg) {
+        if (msg.getDecryptedTextCache() != null) return msg.getDecryptedTextCache();
+        String raw = (currentUserId != null && currentUserId.equals(msg.getSenderId()))
+                ? (msg.getTextSender() != null ? msg.getTextSender() : msg.getText())
+                : msg.getText();
+        if (raw == null) return "";
+        if (raw.startsWith("ENC_V3:")) {
+            String dec = CryptoHelper.decrypt(raw);
+            msg.setDecryptedTextCache(dec);
+            return dec;
+        }
+        return raw;
+    }
+
     private void loadPinnedMessage() {
         pinnedListener = pinnedRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -2632,7 +2682,7 @@ public class ChatActivity extends AppCompatActivity {
                                 ChatMessage msg = msgSnap.getValue(ChatMessage.class);
                                 if (msg != null) {
                                     pinnedMessageContainer.setVisibility(View.VISIBLE);
-                                    String text = "text".equals(msg.getType()) ? CryptoHelper.decrypt(msg.getText()) :
+                                    String text = "text".equals(msg.getType()) ? decryptMessageText(msg) :
                                             ("image".equals(msg.getType()) ? "📷 Фотография" :
                                                     ("voice".equals(msg.getType()) ? "🎤 Голосовое" :
                                                             ("file".equals(msg.getType()) ? "📁 Документ" : "🗺️ Воспоминание")));

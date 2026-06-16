@@ -442,10 +442,7 @@ public class Setting extends AppCompatActivity {
         btnTextSize.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); showTextSizeDialog(); });
         btnClearCache.setOnClickListener(v -> {
             VibratorHelper.vibrate(this, 30);
-            MediaCacheManager.clearCache(this);
-
-            new Thread(() -> Glide.get(this).clearDiskCache()).start();
-            Toast.makeText(this, "Кэш медиа очищен", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, CacheManagementActivity.class));
         });
         btnSupport.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); contactSupport(); });
 

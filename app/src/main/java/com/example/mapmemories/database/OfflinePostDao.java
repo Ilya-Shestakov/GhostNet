@@ -20,4 +20,7 @@ public interface OfflinePostDao {
 
     @Delete
     void delete(OfflinePost post);
+
+    @Query("DELETE FROM offline_posts")
+    void deleteAll();
 }

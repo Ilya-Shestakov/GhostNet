@@ -30,6 +30,8 @@
         android:label="GhostNet"
         android:theme="@style/Theme.MapMemories"
         android:usesCleartextTraffic="true" >
+        <activity android:name=".Settings.CacheManagementActivity" />
+
         <activity
             android:name=".Chats.AccountMigrationActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />

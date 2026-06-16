@@ -28,4 +28,11 @@ public interface LocalMessageDao {
 
     @Query("SELECT COUNT(*) FROM messages WHERE chatId = :chatId")
     int getMessageCount(String chatId);
+
+    @Query("SELECT COUNT(*) FROM messages")
+    int getMessageCountAll();
+
+    @Query("DELETE FROM messages")
+    void deleteAllMessages();
+
 }
