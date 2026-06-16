@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -73,6 +74,16 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
 
         holder.username.setText(item.user.getUsername() != null ? item.user.getUsername() : "Пользователь");
         holder.ivPinnedIcon.setVisibility(item.isPinned ? View.VISIBLE : View.GONE);
+        holder.ivBlockedIcon.setVisibility(item.isBlocked() ? View.VISIBLE : View.GONE);
+
+        if (item.isBlocked()) {
+            // Скрываем превью последнего сообщения и статусы
+            holder.previewText.setText("Чат заблокирован");
+            holder.previewText.setTextColor(ContextCompat.getColor(context, R.color.text_secondary));
+            holder.previewText.setTypeface(null, Typeface.NORMAL);
+            holder.readStatus.setVisibility(View.GONE);
+            holder.unreadBadge.setVisibility(View.GONE);
+        }
 
         if (item.user.getProfileImageUrl() != null && !item.user.getProfileImageUrl().isEmpty()) {
             Glide.with(context).load(item.user.getProfileImageUrl()).circleCrop().placeholder(R.drawable.ic_profile_placeholder).into(holder.avatar);
@@ -184,6 +195,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
         ImageView avatar, ivPinnedIcon, readStatus;
         TextView username, previewText, timeText, unreadBadge;
         View onlineIndicator;
+        ImageView ivBlockedIcon;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -196,6 +208,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
             onlineIndicator = itemView.findViewById(R.id.onlineIndicator);
             ivPinnedIcon = itemView.findViewById(R.id.ivPinnedIcon);
             readStatus = itemView.findViewById(R.id.ivReadStatus);
+            ivBlockedIcon = itemView.findViewById(R.id.ivBlockedIcon);
         }
     }
 }

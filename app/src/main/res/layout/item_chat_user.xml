@@ -67,6 +67,18 @@
             app:layout_constraintTop_toTopOf="@id/chatPreviewText"
             app:layout_constraintBottom_toBottomOf="@id/chatPreviewText" />
 
+
+        <TextView
+            android:id="@+id/timeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/chatUsername"
+            app:layout_constraintBottom_toBottomOf="@id/chatUsername"
+            tools:text="14:20"/>
+
         <TextView
             android:id="@+id/chatPreviewText"
             android:layout_width="0dp"
@@ -84,34 +96,36 @@
             app:layout_constraintHorizontal_bias="0.0"
             tools:text="Последнее сообщение тут..."/>
 
-        <TextView
-            android:id="@+id/timeText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/chatUsername"
-            app:layout_constraintBottom_toBottomOf="@id/chatUsername"
-            tools:text="14:20"/>
 
         <ImageView
             android:id="@+id/ivPinnedIcon"
             android:layout_width="16dp"
             android:layout_height="16dp"
-            android:layout_marginTop="8dp"
             android:src="@drawable/ic_pin"
             app:tint="@color/text_secondary"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/timeText"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintHorizontal_chainStyle="packed"/>
+
+        <ImageView
+            android:id="@+id/ivBlockedIcon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_lock"
+            app:tint="@color/text_secondary"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@id/ivPinnedIcon"
+            app:layout_constraintTop_toBottomOf="@id/timeText"
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
         <TextView
             android:id="@+id/unreadBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
             android:minWidth="20dp"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
@@ -121,10 +135,10 @@
             android:textStyle="bold"
             android:gravity="center"
             android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/ivBlockedIcon"
             app:layout_constraintTop_toBottomOf="@id/timeText"
             app:layout_constraintBottom_toBottomOf="parent"
-            tools:text="3" />
+            tools:text="3"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -5,6 +5,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -14,6 +15,8 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaRecorder;
@@ -27,6 +30,7 @@ import android.renderscript.Element;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -44,6 +48,7 @@ import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -62,6 +67,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.biometric.BiometricPrompt;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -90,6 +96,7 @@ import com.example.mapmemories.systemHelpers.TimeFormatter;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -102,6 +109,8 @@ import com.google.firebase.database.ValueEventListener;
 import java.io.File;
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,6 +119,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class ChatActivity extends AppCompatActivity {
@@ -218,6 +228,8 @@ public class ChatActivity extends AppCompatActivity {
     private boolean isLoadingMore = false;
     private int previousFirstVisibleItem = RecyclerView.NO_POSITION;
 
+    private boolean isChatBlocked = false;
+
     /* |-----------------------------------------------------------------------|
      * |                           ЖИЗНЕННЫЙ ЦИКЛ                          |
      * |-----------------------------------------------------------------------| */
@@ -260,9 +272,52 @@ public class ChatActivity extends AppCompatActivity {
         targetUserId = getIntent().getStringExtra("targetUserId");
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        if (TextUtils.isEmpty(targetUserId)) { finish(); return; }
+        SharedPreferences unlockPrefs = getSharedPreferences("chat_unlock", MODE_PRIVATE);
+        long lastUnlock = unlockPrefs.getLong(chatId, 0);
+        if (System.currentTimeMillis() - lastUnlock < 3 * 60 * 1000) {
+            isChatBlocked = false;
+            loadMessagesOptimized();
+            loadPinnedMessage();
+            loadMyPublicKey();
+            return;
+        }
 
+        if (TextUtils.isEmpty(targetUserId)) { finish(); return; }
         chatId = currentUserId.compareTo(targetUserId) < 0 ? currentUserId + "_" + targetUserId : targetUserId + "_" + currentUserId;
+
+        if (chatId != null && currentUserId != null) {
+            FirebaseDatabase.getInstance().getReference("chats")
+                    .child(chatId).child("blockedBy").child(currentUserId)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            isChatBlocked = snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue());
+                            if (isChatBlocked) {
+                                SharedPreferences unlockPrefs = getSharedPreferences("chat_unlock", MODE_PRIVATE);
+                                long lastUnlock = unlockPrefs.getLong(chatId, 0);
+                                if (System.currentTimeMillis() - lastUnlock < 3 * 60 * 1000) {
+                                    onChatUnlocked();
+                                } else {
+                                    showChatUnlockScreen();
+                                }
+                            } else {
+                                onChatUnlocked();
+                            }
+                        }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            loadMessagesOptimized();
+                            loadPinnedMessage();
+                            loadMyPublicKey();
+                        }
+                    });
+        } else {
+            // Если нет chatId или currentUserId, просто загружаем
+            loadMessagesOptimized();
+            loadPinnedMessage();
+            loadMyPublicKey();
+        }
+
 
         chatRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
         pinnedRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("pinnedMessageId");
@@ -286,9 +341,6 @@ public class ChatActivity extends AppCompatActivity {
         setupVoiceRecording();
 
         loadTargetUserData();
-        loadMessagesOptimized();
-        loadPinnedMessage();
-        loadMyPublicKey();
 
         clearNotification();
 
@@ -601,6 +653,58 @@ public class ChatActivity extends AppCompatActivity {
 
     }
 
+    private void showChatUnlockScreen() {
+        SharedPreferences lockPrefs = getSharedPreferences("chat_lock", MODE_PRIVATE);
+        String passwordHash = lockPrefs.getString("password_hash", null);
+
+        if (passwordHash == null) {
+            // На всякий случай: нет пароля – просто загружаем чат
+            loadMessagesOptimized();
+            loadPinnedMessage();
+            loadMyPublicKey();
+            return;
+        }
+
+        boolean useBiometric = lockPrefs.getBoolean("use_biometric", false);
+
+        if (useBiometric) {
+            showBiometricPrompt();
+        } else {
+            showPasswordInput();
+        }
+    }
+
+    private void showBiometricPrompt() {
+        Executor executor = ContextCompat.getMainExecutor(this);
+        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                onChatUnlocked();
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                Toast.makeText(ChatActivity.this, "Не удалось распознать", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                // Если ошибка (например, нет зарегистрированных отпечатков), показываем пароль
+                showPasswordInput();
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Разблокировка чата")
+                .setSubtitle("Подтвердите личность для доступа к переписке")
+                .setNegativeButtonText("Ввести пароль")
+                .build();
+
+        biometricPrompt.authenticate(promptInfo);
+    }
+
+
+
     private void syncKeysIfNeeded() {
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
@@ -642,6 +746,124 @@ public class ChatActivity extends AppCompatActivity {
                         gpExpandedControls.setVisibility(View.GONE);
                     }).start();
         }
+    }
+
+    private void showPasswordInput() {
+        // Создаём диалог с размытым фоном
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        View activityRootView = getWindow().getDecorView().findViewById(android.R.id.content);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activityRootView != null) {
+            activityRootView.setRenderEffect(RenderEffect.createBlurEffect(20f, 20f, Shader.TileMode.MIRROR));
+        }
+
+        // Надуваем наш layout
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_password_unlock, null);
+
+        // Точки
+        View[] dots = new View[6];
+        dots[0] = dialogView.findViewById(R.id.dot1);
+        dots[1] = dialogView.findViewById(R.id.dot2);
+        dots[2] = dialogView.findViewById(R.id.dot3);
+        dots[3] = dialogView.findViewById(R.id.dot4);
+        dots[4] = dialogView.findViewById(R.id.dot5);
+        dots[5] = dialogView.findViewById(R.id.dot6);
+
+        // Строим клавиатуру
+        GridLayout grid = dialogView.findViewById(R.id.keyboardGrid);
+        StringBuilder passwordBuilder = new StringBuilder();
+        String[] keys = {"1","2","3","4","5","6","7","8","9","","0","⌫"};
+
+        for (int i = 0; i < keys.length; i++) {
+            final String key = keys[i];
+            TextView btn = new TextView(this);
+            btn.setText(key);
+            btn.setTextSize(24f);
+            btn.setTextColor(getColor(R.color.text_primary));
+            btn.setGravity(Gravity.CENTER);
+            btn.setBackgroundResource(R.drawable.key_bg);
+            btn.setClickable(true);
+            btn.setFocusable(true);
+
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = dpToPx(80);
+            params.height = dpToPx(80);
+            params.setMargins(12, 12, 12, 12);
+            params.rowSpec = GridLayout.spec(i / 3);
+            params.columnSpec = GridLayout.spec(i % 3);
+            btn.setLayoutParams(params);
+
+            btn.setOnClickListener(v -> {
+                if (key.equals("⌫")) {
+                    if (passwordBuilder.length() > 0) {
+                        dots[passwordBuilder.length() - 1].setBackgroundResource(R.drawable.dot_inactive);
+                        passwordBuilder.deleteCharAt(passwordBuilder.length() - 1);
+                    }
+                    return;
+                }
+                if (key.isEmpty() || passwordBuilder.length() >= 6) return;
+
+                passwordBuilder.append(key);
+                dots[passwordBuilder.length() - 1].setBackgroundResource(R.drawable.dot_active);
+
+                if (passwordBuilder.length() == 6) {
+                    // Проверяем пароль
+                    if (checkPassword(passwordBuilder.toString())) {
+                        // Верно – закрываем диалог и разблокируем чат
+                        dialog.dismiss();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activityRootView != null) {
+                            activityRootView.setRenderEffect(null);
+                        }
+                        onChatUnlocked();
+                    } else {
+                        // Неверно – сбрасываем
+                        Toast.makeText(ChatActivity.this, "Неверный пароль", Toast.LENGTH_SHORT).show();
+                        passwordBuilder.setLength(0);
+                        for (View dot : dots) dot.setBackgroundResource(R.drawable.dot_inactive);
+                    }
+                }
+            });
+
+            grid.addView(btn);
+        }
+
+        dialog.setContentView(dialogView);
+        dialog.setCancelable(false);
+        dialog.show();
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density);
+    }
+
+    private boolean checkPassword(String input) {
+        SharedPreferences lockPrefs = getSharedPreferences("chat_lock", MODE_PRIVATE);
+        String storedHash = lockPrefs.getString("password_hash", "");
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString().equals(storedHash);
+        } catch (NoSuchAlgorithmException e) {
+            return false;
+        }
+    }
+
+    private void onChatUnlocked() {
+        SharedPreferences prefs = getSharedPreferences("chat_unlock", MODE_PRIVATE);
+        prefs.edit().putLong(chatId, System.currentTimeMillis()).apply();
+        loadMessagesOptimized();
+        loadPinnedMessage();
+        loadMyPublicKey();
     }
 
     private void loadOlderMessages() {

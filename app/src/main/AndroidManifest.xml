@@ -22,6 +22,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
 
+
     <application
         android:name=".GhostNetApp"
         android:allowBackup="true"
@@ -32,6 +33,8 @@
         <activity
             android:name=".Chats.AccountMigrationActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
+        <activity
+            android:name=".Chats.ChatLockSetupActivity" />
         <activity
             android:name=".Chats.OneTimeViewerActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
