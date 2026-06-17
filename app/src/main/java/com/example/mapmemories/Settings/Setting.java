@@ -33,6 +33,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
+import com.example.mapmemories.Info.SecurityInfoActivity;
 import com.example.mapmemories.LogRegStart.LoginActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.DialogHelper;
@@ -60,7 +61,7 @@ public class Setting extends AppCompatActivity {
     private SwipeBackHelper swipeBackHelper;
 
     private ImageView btnBack;
-    private TextView btnChangePassword, btnPrivacy, btnTextSize, btnClearCache, btnSupport, btnLogout, btnDeleteAccount;
+    private TextView btnChangePassword, btnPrivacy, btnTextSize, btnClearCache, btnSupport, btnLogout, btnDeleteAccount, btnSecurity;
 
     private SwitchMaterial switchTheme, switchNotifications, switchMic, switchGallery;
 
@@ -241,6 +242,7 @@ public class Setting extends AppCompatActivity {
         switchMic = findViewById(R.id.switchMic);
         switchGallery = findViewById(R.id.switchGallery);
         btnMigrateAccount = findViewById(R.id.btnMigrateAccount);
+        btnSecurity = findViewById(R.id.btnSecurity);
     }
 
     private void loadSettings() {
@@ -444,6 +446,10 @@ public class Setting extends AppCompatActivity {
             VibratorHelper.vibrate(this, 30);
             startActivity(new Intent(this, CacheManagementActivity.class));
         });
+        btnSecurity.setOnClickListener(v -> {
+            startActivity(new Intent(this, SecurityInfoActivity.class));
+        });
+
         btnSupport.setOnClickListener(v -> { VibratorHelper.vibrate(this, 30); contactSupport(); });
 
         btnLogout.setOnClickListener(v -> {

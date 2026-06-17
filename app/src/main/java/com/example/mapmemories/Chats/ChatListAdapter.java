@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -26,6 +27,8 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+
 import com.example.mapmemories.systemHelpers.CryptoHelper;
 
 public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHolder> {
@@ -50,6 +53,40 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ViewHo
     public void setChats(List<ChatListItem> newChats) {
         this.chatList = newChats;
         notifyDataSetChanged();
+    }
+
+    public void updateChats(List<ChatListItem> newChats) {
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return chatList.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newChats.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return chatList.get(oldItemPosition).chatId.equals(newChats.get(newItemPosition).chatId);
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                ChatListItem oldItem = chatList.get(oldItemPosition);
+                ChatListItem newItem = newChats.get(newItemPosition);
+                return oldItem.unreadCount == newItem.unreadCount
+                        && Objects.equals(oldItem.lastMessage != null ? oldItem.lastMessage.getText() : null,
+                        newItem.lastMessage != null ? newItem.lastMessage.getText() : null)
+                        && oldItem.isPinned == newItem.isPinned
+                        && oldItem.isBlocked() == newItem.isBlocked();
+            }
+        });
+
+        this.chatList.clear();
+        this.chatList.addAll(newChats);
+        diffResult.dispatchUpdatesTo(this);
     }
 
     public void swapItems(int fromPosition, int toPosition) {

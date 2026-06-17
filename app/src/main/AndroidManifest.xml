@@ -31,7 +31,7 @@
         android:theme="@style/Theme.MapMemories"
         android:usesCleartextTraffic="true" >
         <activity android:name=".Settings.CacheManagementActivity" />
-
+        <activity android:name=".Info.SecurityInfoActivity" />
         <activity
             android:name=".Chats.AccountMigrationActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />

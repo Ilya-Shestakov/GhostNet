@@ -632,7 +632,7 @@ public class ChatActivity extends AppCompatActivity {
                     if (replyingToMessage != null) {
                         updates.put("replyMessageId", replyingToMessage.getMessageId());
                         updates.put("replySenderId", replyingToMessage.getSenderId());
-                        updates.put("replyText", replyingToMessage.getText());
+                        updates.put("replyText", decryptMessageText(replyingToMessage));
                     } else {
                         updates.put("replyMessageId", null);
                         updates.put("replySenderId", null);
@@ -2184,7 +2184,7 @@ public class ChatActivity extends AppCompatActivity {
         tvReplySender.setText(isEditing ? "Редактирование" : sender);
 
         String previewText = "";
-        if ("text".equals(message.getType())) previewText = CryptoHelper.decrypt(message.getText());
+        if ("text".equals(message.getType())) previewText = decryptMessageText(message);
         else if ("image".equals(message.getType())) previewText = "📷 Фотография";
         else if ("voice".equals(message.getType())) previewText = "🎤 Голосовое сообщение";
         else if ("post".equals(message.getType())) previewText = "🗺️ Воспоминание";
@@ -2201,12 +2201,21 @@ public class ChatActivity extends AppCompatActivity {
         if (replyingToMessage != null) {
             message.setReplyMessageId(replyingToMessage.getMessageId());
             message.setReplySenderId(replyingToMessage.getSenderId());
-            String replyTxt = "";
-            if ("text".equals(replyingToMessage.getType())) replyTxt = replyingToMessage.getText();
-            else if ("image".equals(replyingToMessage.getType())) replyTxt = "📷 Фотография";
-            else if ("voice".equals(replyingToMessage.getType())) replyTxt = "🎤 Голосовое сообщение";
-            else if ("post".equals(message.getType())) replyTxt = "🗺️ Воспоминание";
-            else if ("file".equals(message.getType())) replyTxt = "📁 Документ";
+
+            String replyTxt;
+            if ("text".equals(replyingToMessage.getType())) {
+                replyTxt = decryptMessageText(replyingToMessage);
+            } else if ("image".equals(replyingToMessage.getType())) {
+                replyTxt = "📷 Фотография";
+            } else if ("voice".equals(replyingToMessage.getType())) {
+                replyTxt = "🎤 Голосовое сообщение";
+            } else if ("post".equals(replyingToMessage.getType())) {
+                replyTxt = "🗺️ Воспоминание";
+            } else if ("file".equals(replyingToMessage.getType())) {
+                replyTxt = "📁 Документ";
+            } else {
+                replyTxt = "Вложение";
+            }
             message.setReplyText(replyTxt);
         }
     }

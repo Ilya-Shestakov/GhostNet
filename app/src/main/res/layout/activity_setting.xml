@@ -342,6 +342,18 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?attr/selectableItemBackground"/>
+
+                    <TextView
+                        android:id="@+id/btnSecurity"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Безопастность"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:padding="16dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackground"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

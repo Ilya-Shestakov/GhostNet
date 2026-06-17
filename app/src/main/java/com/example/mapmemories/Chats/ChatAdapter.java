@@ -230,12 +230,15 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
     private String getDecryptedReplyText(ChatMessage message) {
         String cached = message.getDecryptedReplyTextCache();
-        if (cached != null) {
-            return cached;
-        }
+        if (cached != null) return cached;
 
         String replyText = message.getReplyText();
         if (replyText == null) return "";
+
+        if (!replyText.startsWith("ENC_V3:")) {
+            message.setDecryptedReplyTextCache(replyText);
+            return replyText;
+        }
 
         String decrypted = CryptoHelper.decrypt(replyText);
         message.setDecryptedReplyTextCache(decrypted);
@@ -255,29 +258,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
 
-
-//        String encryptedData;
-//        if (message.getSenderId().equals(currentUserId)) {
-//            encryptedData = message.getTextSender();
-//            if (encryptedData == null) encryptedData = message.getText();
-//        } else {
-//            encryptedData = message.getText();
-//        }
-
         if (message.getMessageId() != null && message.getMessageId().startsWith("TEMP_")) {
             holder.itemView.setAlpha(0.5f);
         } else {
             holder.itemView.setAlpha(1.0f);
         }
-
-//        String rawEncrypted;
-//        if (isMine) {
-//            rawEncrypted = (message.getTextSender() != null) ? message.getTextSender() : message.getText();
-//        } else {
-//            rawEncrypted = message.getText();
-//        }
-
-        //holder.tvTextMessage.setText(CryptoHelper.decrypt(rawEncrypted));
 
         if (isSelected) {
             holder.itemView.setBackgroundColor(Color.parseColor("#1AE27950"));

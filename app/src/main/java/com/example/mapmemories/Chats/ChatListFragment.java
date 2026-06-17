@@ -541,7 +541,7 @@ public class ChatListFragment extends Fragment {
                 pinnedChatsMap.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     Object val = ds.getValue();
-                    long order = (val instanceof Number) ? ((Number)val).longValue() : 0L;
+                    long order = (val instanceof Number) ? ((Number) val).longValue() : 0L;
                     pinnedChatsMap.put(ds.getKey(), order);
                 }
                 for (ChatListItem item : allChatListItems) {
@@ -553,7 +553,9 @@ public class ChatListFragment extends Fragment {
                         item.pinnedOrder = 0L;
                     }
                 }
-                if (!isDragging) updateLocalFilter(searchInput.getText().toString());
+                if (!isDragging) {
+                    updateLocalFilter(searchInput.getText().toString());
+                }
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -611,7 +613,6 @@ public class ChatListFragment extends Fragment {
         final ChatMessage finalLastMsg = lastMsg;
         final int finalUnreadCount = unreadCount;
 
-        // Проверяем, что ID собеседника не null
         if (otherUserId == null) return;
 
         usersRef.child(otherUserId).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -681,9 +682,6 @@ public class ChatListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (chatListAdapter != null) {
-            chatListAdapter.notifyDataSetChanged();
-        }
     }
 
     private void updateLocalFilter(String query) {
