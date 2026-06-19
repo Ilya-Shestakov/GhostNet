@@ -33,6 +33,10 @@
         <activity android:name=".Settings.CacheManagementActivity" />
         <activity android:name=".Info.SecurityInfoActivity" />
         <activity
+            android:name=".Info.FAQDetailActivity"
+            android:parentActivityName=".Info.SecurityInfoActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+        <activity
             android:name=".Chats.AccountMigrationActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity

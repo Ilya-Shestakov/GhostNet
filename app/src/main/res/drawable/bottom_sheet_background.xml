@@ -1,0 +1,6 @@
+<!-- res/drawable/bottom_sheet_background.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1E293B" />
+    <corners android:topLeftRadius="24dp" android:topRightRadius="24dp" />
+</shape>

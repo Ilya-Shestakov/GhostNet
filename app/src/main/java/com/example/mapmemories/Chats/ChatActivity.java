@@ -94,6 +94,7 @@ import com.example.mapmemories.systemHelpers.DraftManager;
 import com.example.mapmemories.systemHelpers.MessageWorker;
 import com.example.mapmemories.systemHelpers.TimeFormatter;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -754,7 +755,6 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void showPasswordInput() {
-        // Создаём диалог с размытым фоном
         Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         if (dialog.getWindow() != null) {
@@ -766,10 +766,9 @@ public class ChatActivity extends AppCompatActivity {
             activityRootView.setRenderEffect(RenderEffect.createBlurEffect(20f, 20f, Shader.TileMode.MIRROR));
         }
 
-        // Надуваем наш layout
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_password_unlock, null);
 
-        // Точки
+        // Точки и клавиатура (как раньше)
         View[] dots = new View[6];
         dots[0] = dialogView.findViewById(R.id.dot1);
         dots[1] = dialogView.findViewById(R.id.dot2);
@@ -778,7 +777,6 @@ public class ChatActivity extends AppCompatActivity {
         dots[4] = dialogView.findViewById(R.id.dot5);
         dots[5] = dialogView.findViewById(R.id.dot6);
 
-        // Строим клавиатуру
         GridLayout grid = dialogView.findViewById(R.id.keyboardGrid);
         StringBuilder passwordBuilder = new StringBuilder();
         String[] keys = {"1","2","3","4","5","6","7","8","9","","0","⌫"};
@@ -816,16 +814,13 @@ public class ChatActivity extends AppCompatActivity {
                 dots[passwordBuilder.length() - 1].setBackgroundResource(R.drawable.dot_active);
 
                 if (passwordBuilder.length() == 6) {
-                    // Проверяем пароль
                     if (checkPassword(passwordBuilder.toString())) {
-                        // Верно – закрываем диалог и разблокируем чат
                         dialog.dismiss();
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activityRootView != null) {
                             activityRootView.setRenderEffect(null);
                         }
                         onChatUnlocked();
                     } else {
-                        // Неверно – сбрасываем
                         Toast.makeText(ChatActivity.this, "Неверный пароль", Toast.LENGTH_SHORT).show();
                         passwordBuilder.setLength(0);
                         for (View dot : dots) dot.setBackgroundResource(R.drawable.dot_inactive);
@@ -836,8 +831,27 @@ public class ChatActivity extends AppCompatActivity {
             grid.addView(btn);
         }
 
+        // Кнопка "Отмена"
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btnCancel);
+        btnCancel.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activityRootView != null) {
+                activityRootView.setRenderEffect(null);
+            }
+            finish(); // Закрываем чат, возвращаемся в список
+        });
+
         dialog.setContentView(dialogView);
-        dialog.setCancelable(false);
+
+        // Разрешаем закрыть диалог системной кнопкой "Назад"
+        dialog.setCancelable(true);
+        dialog.setOnCancelListener(dialog1 -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activityRootView != null) {
+                activityRootView.setRenderEffect(null);
+            }
+            finish(); // Также закрываем чат
+        });
+
         dialog.show();
     }
 
