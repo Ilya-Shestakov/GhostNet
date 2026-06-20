@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.example.mapmemories.Info.SecurityInfoActivity;
+import com.example.mapmemories.Lenta.MainActivity;
 import com.example.mapmemories.LogRegStart.LoginActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.DialogHelper;
@@ -455,11 +456,43 @@ public class Setting extends AppCompatActivity {
         btnLogout.setOnClickListener(v -> {
             VibratorHelper.vibrate(this, 50);
             DialogHelper.showConfirmation(this, "Выход", "Вы уверены, что хотите выйти из аккаунта?", () -> {
-                FirebaseAuth.getInstance().signOut();
-                Intent intent = new Intent(Setting.this, LoginActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finish();
+                MultiAccountManager accountManager = new MultiAccountManager(this);
+                List<LocalAccount> accounts = accountManager.getAccounts();
+                String currentUid = FirebaseAuth.getInstance().getUid();
+                LocalAccount currentAccount = null;
+                for (LocalAccount acc : accounts) {
+                    if (acc.uid.equals(currentUid)) {
+                        currentAccount = acc;
+                        break;
+                    }
+                }
+                if (currentAccount != null) {
+                    accounts.remove(currentAccount);
+                }
+
+                if (!accounts.isEmpty()) {
+                    LocalAccount nextAccount = accounts.get(0);
+                    accountManager.removeAccount(currentUid);
+                    FirebaseAuth.getInstance().signOut();
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(nextAccount.email, nextAccount.password)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Intent intent = new Intent(Setting.this, MainActivity.class);
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    startActivity(intent);
+                                    finish();
+                                } else {
+                                    Toast.makeText(Setting.this, "Не удалось переключить аккаунт", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                } else {
+                    accountManager.removeAccount(currentUid);
+                    FirebaseAuth.getInstance().signOut();
+                    Intent intent = new Intent(Setting.this, LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                }
             });
         });
 

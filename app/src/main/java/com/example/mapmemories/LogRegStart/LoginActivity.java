@@ -19,6 +19,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.mapmemories.Info.SecurityInfoActivity;
 import com.example.mapmemories.Lenta.MainActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.systemHelpers.CryptoHelper;
@@ -40,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextView registerButton, forgotPasswordTextView;
     private ProgressBar progressBar;
     private RelativeLayout overlay;
-
+    private ImageView questionSecurity;
     private FirebaseAuth mAuth;
 
     private LinearLayout loginFieldsContainer, qrContainer;
@@ -88,6 +89,8 @@ public class LoginActivity extends AppCompatActivity {
         ivQrCode = findViewById(R.id.ivQrCode);
         btnSwitchMode = findViewById(R.id.btnSwitchMode);
 
+        questionSecurity = findViewById(R.id.questionSecurity);
+
         showLoading(false);
     }
 
@@ -102,6 +105,10 @@ public class LoginActivity extends AppCompatActivity {
         forgotPasswordTextView.setOnClickListener(v -> showForgotPasswordDialog());
 
         btnSwitchMode.setOnClickListener(v -> toggleLoginMode());
+
+        questionSecurity.setOnClickListener(v -> {
+            startActivity(new Intent(this, SecurityInfoActivity.class));
+        });
     }
 
     private void attemptLogin() {

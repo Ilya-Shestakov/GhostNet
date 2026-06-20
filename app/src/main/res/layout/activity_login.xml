@@ -35,6 +35,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/logoImageView" />
 
+        <ImageView
+            android:id="@+id/questionSecurity"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:layout_constraintEnd_toEndOf="@+id/sloganTextView"
+            app:layout_constraintStart_toStartOf="@+id/sloganTextView"
+            app:layout_constraintTop_toBottomOf="@+id/sloganTextView"
+            android:src="@drawable/ic_question"
+            />
+
         <LinearLayout
             android:id="@+id/loginFieldsContainer"
             android:layout_width="match_parent"

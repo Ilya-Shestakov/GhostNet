@@ -13,6 +13,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +34,12 @@ public class SecurityInfoActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_security_info);
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+            v.setPadding(v.getPaddingLeft(), top, v.getPaddingRight(), v.getPaddingBottom());
+            return insets;
+        });
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -91,7 +99,7 @@ public class SecurityInfoActivity extends AppCompatActivity {
             TextView questionText;
             FrameLayout answerContainer;
             WebView webView;
-            boolean webViewCreated = false;
+            int loadedContentType = -1;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -103,12 +111,17 @@ public class SecurityInfoActivity extends AppCompatActivity {
             void bind(FaqItem item, boolean isExpanded, int position) {
                 questionText.setText(item.question);
 
-                // Убираем старый слушатель, чтобы не накапливались
                 card.setOnClickListener(null);
 
                 if (isExpanded) {
-                    // Создаём WebView один раз
-                    if (!webViewCreated) {
+                    if (webView == null || loadedContentType != item.contentType) {
+
+                        if (webView != null) {
+                            answerContainer.removeView(webView);
+                            webView.destroy();
+                            webView = null;
+                        }
+
                         webView = new WebView(itemView.getContext());
                         webView.setLayoutParams(new FrameLayout.LayoutParams(
                                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -120,31 +133,28 @@ public class SecurityInfoActivity extends AppCompatActivity {
                         webView.setWebViewClient(new WebViewClient());
                         loadContent(webView, item.contentType);
                         answerContainer.addView(webView);
-                        webViewCreated = true;
+                        loadedContentType = item.contentType;
                     }
                     answerContainer.setVisibility(View.VISIBLE);
                 } else {
                     answerContainer.setVisibility(View.GONE);
+
                 }
 
-                // Клик на карточку
                 card.setOnClickListener(v -> {
                     int clickedPos = getAdapterPosition();
                     if (clickedPos == RecyclerView.NO_POSITION) return;
 
                     int oldPos = expandedPosition;
                     if (oldPos == clickedPos) {
-                        // Закрываем текущий
                         expandedPosition = RecyclerView.NO_POSITION;
                         notifyItemChanged(clickedPos);
                     } else {
-                        // Закрываем старый, открываем новый
                         expandedPosition = clickedPos;
                         if (oldPos != RecyclerView.NO_POSITION) {
                             notifyItemChanged(oldPos);
                         }
                         notifyItemChanged(clickedPos);
-                        // Прокручиваем, чтобы было видно
                         recyclerView.smoothScrollToPosition(clickedPos);
                     }
                 });
@@ -156,18 +166,10 @@ public class SecurityInfoActivity extends AppCompatActivity {
                         webView.loadUrl("file:///android_res/raw/anim.html");
                         break;
                     case 1:
-                        String html1 = "<html><body style='background:#1a1a2e;color:#e0e0ff;font-family:sans-serif;padding:16px'>"
-                                + "<h3>Почему нельзя зайти с двух устройств?</h3>"
-                                + "<p>Каждый вход генерирует уникальный идентификатор сессии. При входе с нового устройства старая сессия блокируется. Это предотвращает параллельный доступ и защищает от перехвата данных.</p>"
-                                + "</body></html>";
-                        webView.loadDataWithBaseURL(null, html1, "text/html", "UTF-8", null);
+                        webView.loadUrl("file:///android_res/raw/anim_session.html");
                         break;
                     case 2:
-                        String html2 = "<html><body style='background:#1a1a2e;color:#e0e0ff;font-family:sans-serif;padding:16px'>"
-                                + "<h3>Почему перенос только по QR?</h3>"
-                                + "<p>Перенос данных идёт напрямую между устройствами по локальной сети. QR-код содержит только временный ключ и IP-адрес. Сообщения не проходят через сервер, оставаясь под вашим контролем.</p>"
-                                + "</body></html>";
-                        webView.loadDataWithBaseURL(null, html2, "text/html", "UTF-8", null);
+                        webView.loadUrl("file:///android_res/raw/anim_qr_transfer.html");
                         break;
                 }
             }

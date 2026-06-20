@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Шифрование в мессенджере</title>
+    <title>Одно устройство — одна сессия</title>
     <style>
         :root {
             --bg: #1a1a2e;
@@ -12,6 +12,7 @@
             --text: #e0e0ff;
             --muted: #a0a0c0;
             --gold: #f0b90b;
+            --red: #ef4444;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -174,17 +175,23 @@
             letter-spacing: 1px;
             color: #fbbf24;
         }
+
+        .error-box {
+            border-color: var(--red) !important;
+            color: #fca5a5 !important;
+            background: rgba(30, 20, 20, 0.95) !important;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="desc" id="stepDesc">Нажмите «Далее», чтобы увидеть, как работает шифрование</div>
+    <div class="desc" id="stepDesc">Нажмите «Далее», чтобы узнать, почему нельзя сидеть с двух устройств одновременно</div>
 
     <div class="scene" id="scene">
         <div class="database" id="db"><span class="db-label">БД</span></div>
         <div class="device device-a" id="devA"><div class="device-label">Устройство А</div></div>
-        <div class="device device-b" id="devB"><div class="device-label">Устройство Б</div></div>
+        <div class="device device-b" id="devB"><div class="device-label">Новое устр-во Б</div></div>
 
         <div class="floating" id="privKeyA"><svg class="key-icon" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8"><path d="M21 2L15 8M21 2L14 9M21 2L19 8.5M15 8C15 8 11 6 8 9C5 12 6 16 6 16L9 19C9 19 13 20 16 17C19 14 17 10 17 10L21 2Z"/><circle cx="8" cy="17" r="2"/></svg></div>
         <div class="floating" id="pubKeyA"><svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
@@ -220,9 +227,8 @@
         const encBox = document.getElementById('encBox');
 
         let currentStep = 0;
-        const TOTAL_STEPS = 11;
+        const TOTAL_STEPS = 6; // шаги 0…6
 
-        // Инициализируем координаты один раз при старте или ресайзе
         let positions = {};
 
         function updatePositions() {
@@ -237,9 +243,21 @@
             const posDB = getCenter(db);
 
             positions = {
-                devA: { priv: { x: posA.x - 35, y: posA.y - 30 }, pub: { x: posA.x + 10, y: posA.y - 45 }, msg: { x: posA.x - 60, y: posA.y - 90 } },
-                devB: { priv: { x: posB.x + 35, y: posB.y - 30 }, privActive: { x: posB.x - 5, y: posB.y - 70 }, pub: { x: posB.x - 10, y: posB.y - 45 }, msg: { x: posB.x - 20, y: posB.y - 90 } },
-                db: { pubA: { x: posDB.x - 45, y: posDB.y + 20 }, pubB: { x: posDB.x + 15, y: posDB.y + 20 }, center: { x: posDB.x - 50, y: posDB.y + 50 } }
+                devA: {
+                    priv: { x: posA.x - 35, y: posA.y - 30 },
+                    pub: { x: posA.x + 10, y: posA.y - 45 },
+                    msg: { x: posA.x - 60, y: posA.y - 90 }
+                },
+                devB: {
+                    priv: { x: posB.x + 35, y: posB.y - 30 },
+                    pub: { x: posB.x - 10, y: posB.y - 45 },
+                    msg: { x: posB.x - 20, y: posB.y - 90 }
+                },
+                db: {
+                    pubA: { x: posDB.x - 45, y: posDB.y + 20 },
+                    pubB: { x: posDB.x + 15, y: posDB.y + 20 },
+                    center: { x: posDB.x - 50, y: posDB.y + 50 }
+                }
             };
         }
 
@@ -253,81 +271,82 @@
         }
 
         function applyStep(step) {
-            msgBox.textContent = 'Привет';
-            encBox.textContent = 'a3f7c2...';
+            // Сброс дополнительных классов
+            encBox.classList.remove('error-box');
+            msgBox.textContent = '';
+            encBox.textContent = '';
 
             switch(step) {
                 case 0:
-                    desc.textContent = 'Нажмите «Далее», чтобы увидеть, как работает шифрование';
-                    setPos(privKeyA, positions.devA.priv, false); setPos(pubKeyA, positions.devA.pub, false);
-                    setPos(privKeyB, positions.devB.priv, false); setPos(pubKeyB, positions.devB.pub, false);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Нажмите «Далее», чтобы узнать, почему нельзя использовать два устройства одновременно';
+                    setPos(privKeyA, positions.devA.priv, false);
+                    setPos(pubKeyA, positions.devA.pub, false);
+                    setPos(privKeyB, positions.devB.priv, false);
+                    setPos(pubKeyB, positions.devB.pub, false);
+                    setPos(msgBox, positions.devA.msg, false);
+                    setPos(encBox, positions.devA.msg, false);
                     break;
                 case 1:
-                    desc.textContent = 'Устройства А и Б регистрируются в мессенджере';
-                    setPos(privKeyA, positions.devA.priv, false); setPos(pubKeyA, positions.devA.pub, false);
-                    setPos(privKeyB, positions.devB.priv, false); setPos(pubKeyB, positions.devB.pub, false);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Устройство А авторизовано в мессенджере. Его публичный ключ хранится на сервере';
+                    setPos(privKeyA, positions.devA.priv);
+                    setPos(pubKeyA, positions.db.pubA);
+                    setPos(privKeyB, positions.devB.priv, false);
+                    setPos(pubKeyB, positions.devB.pub, false);
+                    setPos(msgBox, positions.devA.msg, false);
+                    setPos(encBox, positions.devA.msg, false);
                     break;
                 case 2:
-                    desc.textContent = 'На каждом устройстве генерируется пара ключей (приватный и публичный)';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.devA.pub);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, positions.devB.pub);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Пользователь пытается войти с нового устройства Б';
+                    // визуально ничего не меняем, только описание
+                    setPos(privKeyA, positions.devA.priv);
+                    setPos(pubKeyA, positions.db.pubA);
+                    setPos(privKeyB, positions.devB.priv, false);
+                    setPos(pubKeyB, positions.devB.pub, false);
+                    setPos(msgBox, positions.devA.msg, false);
+                    setPos(encBox, positions.devA.msg, false);
                     break;
                 case 3:
-                    desc.textContent = 'Публичные ключи отправляются на сервер базы данных';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, positions.db.pubB);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Устройство Б генерирует новую пару ключей (приватный и публичный)';
+                    setPos(privKeyA, positions.devA.priv);
+                    setPos(pubKeyA, positions.db.pubA);
+                    setPos(privKeyB, positions.devB.priv);
+                    setPos(pubKeyB, positions.devB.pub);
+                    setPos(msgBox, positions.devA.msg, false);
+                    setPos(encBox, positions.devA.msg, false);
                     break;
                 case 4:
-                    desc.textContent = 'Устройство А пишет сообщение для Б';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, positions.db.pubB);
-                    setPos(msgBox, positions.devA.msg); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Новый публичный ключ Б отправляется на сервер. Старый ключ А удаляется';
+                    setPos(privKeyA, positions.devA.priv);
+                    setPos(pubKeyA, positions.db.pubA, false); // старый ключ исчезает
+                    setPos(privKeyB, positions.devB.priv);
+                    setPos(pubKeyB, positions.db.pubB);         // новый ключ в БД
+                    setPos(msgBox, positions.devA.msg, false);
+                    setPos(encBox, positions.devA.msg, false);
                     break;
                 case 5:
-                    desc.textContent = 'Приложение запрашивает публичный ключ Б из базы данных';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, { x: positions.devA.msg.x + 30, y: positions.devA.msg.y - 40 });
-                    setPos(msgBox, positions.devA.msg); setPos(encBox, positions.devA.msg, false);
+                    desc.textContent = 'Устройство А пытается отправить сообщение, но сервер отвергает: ключ А удалён';
+                    setPos(privKeyA, positions.devA.priv);
+                    setPos(pubKeyA, positions.db.pubA, false);
+                    setPos(privKeyB, positions.devB.priv);
+                    setPos(pubKeyB, positions.db.pubB);
+                    // сообщение на устройстве А
+                    msgBox.textContent = 'Привет';
+                    setPos(msgBox, positions.devA.msg);
+                    // ошибка от сервера
+                    encBox.textContent = 'Ошибка';
+                    encBox.classList.add('error-box');
+                    setPos(encBox, positions.db.center);
                     break;
                 case 6:
-                    desc.textContent = 'Сообщение шифруется на устройстве А публичным ключом Б';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, { x: positions.devA.msg.x + 30, y: positions.devA.msg.y - 40 }, false);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.devA.msg);
-                    break;
-                case 7:
-                    desc.textContent = 'Зашифрованный пакет отправляется на сервер';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, positions.db.pubB, false);
-                    setPos(msgBox, positions.devA.msg, false); setPos(encBox, positions.db.center);
-                    break;
-                case 8:
-                    desc.textContent = 'Сервер доставляет зашифрованный пакет устройству Б';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.priv); setPos(pubKeyB, positions.db.pubB, false);
-                    setPos(msgBox, positions.devB.msg, false); setPos(encBox, positions.devB.msg);
-                    break;
-                case 9:
-                    desc.textContent = 'Приватный ключ Б применяется для расшифровки пакета';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.privActive); setPos(pubKeyB, positions.db.pubB, false);
-                    setPos(msgBox, positions.devB.msg, false); setPos(encBox, positions.devB.msg);
-                    break;
-                case 10:
-                    desc.textContent = 'Сообщение успешно расшифровано! Только Б может его прочесть';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.privActive); setPos(pubKeyB, positions.db.pubB, false);
-                    setPos(msgBox, positions.devB.msg); setPos(encBox, positions.devB.msg, false);
-                    break;
-                case 11:
-                    desc.textContent = '✅ Приватный ключ никогда не покидал устройство Б. Данные в полной безопасности!';
-                    setPos(privKeyA, positions.devA.priv); setPos(pubKeyA, positions.db.pubA);
-                    setPos(privKeyB, positions.devB.privActive); setPos(pubKeyB, positions.db.pubB, false);
-                    setPos(msgBox, positions.devB.msg); setPos(encBox, positions.devB.msg, false);
+                    desc.textContent = 'Сессия на устройстве А принудительно завершена. Только одно устройство может быть активно';
+                    setPos(privKeyA, positions.devA.priv, false); // ключи А пропадают
+                    setPos(pubKeyA, positions.db.pubA, false);
+                    setPos(privKeyB, positions.devB.priv);
+                    setPos(pubKeyB, positions.db.pubB);
+                    // сообщение на А о завершении сессии
+                    msgBox.textContent = 'Сессия завершена';
+                    setPos(msgBox, positions.devA.msg);
+                    setPos(encBox, positions.devA.msg, false); // ошибку убираем
                     break;
             }
 
@@ -340,8 +359,12 @@
             applyStep(currentStep);
         }
 
-        nextBtn.addEventListener('click', () => { if(currentStep < TOTAL_STEPS) goToStep(currentStep + 1); });
-        prevBtn.addEventListener('click', () => { if(currentStep > 0) goToStep(currentStep - 1); });
+        nextBtn.addEventListener('click', () => {
+            if (currentStep < TOTAL_STEPS) goToStep(currentStep + 1);
+        });
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 0) goToStep(currentStep - 1);
+        });
 
         window.addEventListener('resize', () => {
             updatePositions();
