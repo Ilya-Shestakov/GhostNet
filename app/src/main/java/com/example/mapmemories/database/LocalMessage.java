@@ -21,5 +21,25 @@ public class LocalMessage {
     public int selfDestructTime;
     public boolean isOneTime;
 
+    private String mediaUrls;
+    private String mediaTypes;
+
+
     public LocalMessage() {}
+
+    public String getMediaUrls() {
+        return mediaUrls;
+    }
+
+    public void setMediaUrls(String mediaUrls) {
+        this.mediaUrls = mediaUrls;
+    }
+
+    public String getMediaTypes() {
+        return mediaTypes;
+    }
+
+    public void setMediaTypes(String mediaTypes) {
+        this.mediaTypes = mediaTypes;
+    }
 }

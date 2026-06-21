@@ -10,6 +10,7 @@
     android:layout_marginBottom="2dp"
     android:paddingHorizontal="8dp">
 
+    <!-- contentLayout -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentLayout"
         android:layout_width="wrap_content"
@@ -65,7 +66,6 @@
                     android:layout_marginTop="2dp"/>
             </LinearLayout>
         </LinearLayout>
-
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/imageContainer"
@@ -260,8 +260,35 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/albumLayout"
+            android:layout_width="240dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/fileLayout"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <TextView
+                android:id="@+id/albumCaption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:paddingBottom="4dp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/albumRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- highlight overlay -->
     <View
         android:id="@+id/highlightOverlay"
         android:layout_width="0dp"
@@ -273,6 +300,7 @@
         app:layout_constraintStart_toStartOf="@id/contentLayout"
         app:layout_constraintEnd_toEndOf="@id/contentLayout"/>
 
+    <!-- reaction badge -->
     <TextView
         android:id="@+id/tvReactionBadge"
         android:layout_width="wrap_content"

@@ -309,8 +309,6 @@
                         android:src="@android:drawable/stat_sys_download"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         app:tint="@color/text_secondary"/>
-
-
                 </LinearLayout>
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -394,6 +392,16 @@
         android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent">
 
+        <!-- НОВЫЙ КОНТЕЙНЕР ДЛЯ МНОЖЕСТВЕННОГО МЕДИА-ПРЕВЬЮ -->
+        <LinearLayout
+            android:id="@+id/mediaPreviewContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp"
+            android:visibility="gone" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/imagePreviewContainer"
             android:layout_width="match_parent"
@@ -438,9 +446,7 @@
                         app:tint="@color/white"
                         android:clickable="true"
                         android:focusable="true"
-                        android:visibility="gone"
-                        />
-
+                        android:visibility="gone" />
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -458,7 +464,6 @@
                 android:layout_marginStart="78dp"
                 android:layout_marginTop="-6dp"
                 android:elevation="6dp"/>
-
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -764,7 +769,6 @@
             android:progressTint="#E0FFFFFF"
             android:progressBackgroundTint="#33FFFFFF"
             android:indeterminate="false" />
-
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

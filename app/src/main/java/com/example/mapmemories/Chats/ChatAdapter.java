@@ -35,6 +35,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -55,6 +56,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -256,6 +258,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         boolean isSelected = message.getMessageId() != null && selectedMessageIds.contains(message.getMessageId());
         boolean isUploading = message.getMessageId() != null && uploadingMessageIds.contains(message.getMessageId());
 
+        holder.albumLayout.setVisibility(View.GONE);
+        holder.albumRecycler.setVisibility(View.GONE);
+
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
 
         if (message.getMessageId() != null && message.getMessageId().startsWith("TEMP_")) {
@@ -305,8 +310,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         holder.timeText.setText(sdf.format(message.getTimestamp()));
 
-        //resetViewHolders(holder);
-
         holder.imageContainer.setVisibility(View.GONE);
         holder.voiceLayout.setVisibility(View.GONE);
         holder.fileLayout.setVisibility(View.GONE);
@@ -320,6 +323,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.ivReadStatus.setVisibility(View.GONE);
         holder.chatAttachedImage.setImageDrawable(null);
         holder.tvTextMessage.setVisibility(View.GONE);
+
 
 
         if (isHighlighted) {
@@ -349,6 +353,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.tvQuotedText.setText(getDecryptedReplyText(message));
             holder.replyQuotedLayout.setOnClickListener(v -> { if (actionListener != null) actionListener.onQuoteClicked(message.getReplyMessageId()); });
         }
+
+        holder.albumLayout.setVisibility(View.GONE);
 
         /* |-----------------------------------------------------------------------|
          * |                           ТИПЫ СООБЩЕНИЙ                              |
@@ -458,6 +464,46 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 holder.tvVoiceDuration.setOnClickListener(playPauseListener);
                 holder.voiceLayout.setOnClickListener(playPauseListener);
             }
+        } else if ("album".equals(message.getType())) {
+            holder.tvTextMessage.setVisibility(View.GONE);   // обычный текст не нужен
+            holder.albumLayout.setVisibility(View.VISIBLE);
+            if (isUploading) {
+                holder.imageProgressBar.setVisibility(View.VISIBLE);
+                holder.albumRecycler.setVisibility(View.GONE);
+            } else {
+                holder.imageProgressBar.setVisibility(View.GONE);
+                holder.albumRecycler.setVisibility(View.VISIBLE);
+            }
+
+            String cap = getDecryptedContent(message);
+            if (cap != null && !cap.isEmpty()) {
+                holder.albumCaption.setText(cap);
+                holder.albumCaption.setVisibility(View.VISIBLE);
+            } else {
+                holder.albumCaption.setVisibility(View.GONE);
+            }
+
+            List<String> urls = message.getMediaUrls() != null ? message.getMediaUrls() : new ArrayList<>();
+            List<String> types = message.getMediaTypes() != null ? message.getMediaTypes() : new ArrayList<>();
+
+            AlbumMediaAdapter albumAdapter = new AlbumMediaAdapter(
+                    context, urls, types,
+                    (url, pos) -> {
+                        Intent intent = new Intent(context, AlbumViewerActivity.class);
+                        intent.putStringArrayListExtra("mediaUrls", new ArrayList<>(urls));
+                        intent.putStringArrayListExtra("mediaTypes", new ArrayList<>(types));
+                        intent.putExtra("startIndex", pos);
+                        context.startActivity(intent);
+                    }
+            );
+            holder.albumRecycler.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
+            holder.albumRecycler.setAdapter(albumAdapter);
+
+            holder.albumRecycler.setOnTouchListener((v, event) -> {
+                v.getParent().requestDisallowInterceptTouchEvent(true);
+                return false;
+            });
+
         }
 
 
@@ -527,6 +573,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     }
 
     private void resetViewHolders(ViewHolder holder) {
+        holder.albumLayout.setVisibility(View.GONE);
         holder.tvTextMessage.setVisibility(View.GONE);
         holder.postLayout.setVisibility(View.GONE);
         holder.imageContainer.setVisibility(View.GONE);
@@ -542,6 +589,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.chatAttachedImage.setTag(null);
         holder.fileLayout.setVisibility(View.GONE);
         holder.itemView.setAlpha(1.0f);
+
     }
 
     private String formatVoiceTime(int totalMs) {
@@ -741,6 +789,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         ProgressBar imageProgressBar;
         ImageButton btnPlayPause;
 
+
+        LinearLayout albumLayout;
+        RecyclerView albumRecycler;
+        TextView albumCaption;
+
+
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             contentLayout = itemView.findViewById(R.id.contentLayout);
@@ -766,6 +820,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             ivTimerBadge = itemView.findViewById(R.id.ivTimerBadge);
             imageProgressBar = itemView.findViewById(R.id.imageProgressBar);
             secretOverlay = itemView.findViewById(R.id.secretOverlay);
+            albumLayout = itemView.findViewById(R.id.albumLayout);
+            albumRecycler = itemView.findViewById(R.id.albumRecycler);
+            albumCaption = itemView.findViewById(R.id.albumCaption);
         }
     }
     private static class PostCacheData {

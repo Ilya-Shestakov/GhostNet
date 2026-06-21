@@ -35,10 +35,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.viewpager2.adapter.FragmentStateAdapter;
-import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.example.mapmemories.Chats.ChatListFragment;
@@ -51,8 +47,6 @@ import com.example.mapmemories.database.AppDatabase;
 import com.example.mapmemories.systemHelpers.DialogHelper;
 import com.example.mapmemories.systemHelpers.VibratorHelper;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -61,15 +55,12 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-
 import android.net.TrafficStats;
 
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ViewPager2 viewPager;
-    private TabLayout tabLayout;
     private MaterialCardView fabAdd, bottomDock;
     private ImageView profileButton, fabSettings, offlineBadge, fabAddIcon;
 
@@ -113,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         checkCurrentUser();
 
         initViews();
-        setupViewPager();
+        setupChatListFragment();
         observeUnreadMessages();
         setupClickListeners();
         loadUserAvatar();
@@ -139,7 +130,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-
                 prefs.edit().putBoolean("notifications_enabled", true).apply();
                 startService(new Intent(this, MessageListenerService.class));
             } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
@@ -154,8 +144,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        viewPager = findViewById(R.id.viewPager);
-        tabLayout = findViewById(R.id.tabLayout);
         bottomDock = findViewById(R.id.bottomDock);
         fabAdd = findViewById(R.id.fabAdd);
         fabAddIcon = findViewById(R.id.fabAddIcon);
@@ -164,6 +152,13 @@ public class MainActivity extends AppCompatActivity {
         offlineBadge = findViewById(R.id.offlineBadge);
         appTitle = findViewById(R.id.appTitle);
         appTitle.setOnClickListener(v -> showNetworkStatsDialog());
+    }
+
+    private void setupChatListFragment() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, new ChatListFragment())
+                .commit();
     }
 
     public void toggleBottomDock(boolean show) {
@@ -188,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String activeDeviceId = snapshot.getValue(String.class);
                         if (activeDeviceId != null && !activeDeviceId.equals(myDeviceId)) {
-
                             handleSessionExpired(currentUid);
                         }
                     }
@@ -204,7 +198,6 @@ public class MainActivity extends AppCompatActivity {
         String currentFirebaseUid = FirebaseAuth.getInstance().getUid();
 
         if (kickedUid.equals(currentFirebaseUid)) {
-
             List<LocalAccount> remaining = accountManager.getAccounts();
 
             if (!remaining.isEmpty()) {
@@ -507,8 +500,6 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-
-                updateChatsTabBadge(totalUnreadCount);
             }
 
             @Override
@@ -546,31 +537,6 @@ public class MainActivity extends AppCompatActivity {
         };
 
         connectedRef.addValueEventListener(connectionListener);
-    }
-
-    private void updateChatsTabBadge(int unreadCount) {
-        TabLayout.Tab chatTab = tabLayout.getTabAt(1);
-
-        if (chatTab != null) {
-            if (unreadCount > 0) {
-                BadgeDrawable badge = chatTab.getOrCreateBadge();
-                badge.setNumber(unreadCount);
-                badge.setBackgroundColor(ContextCompat.getColor(this, R.color.accent));
-                badge.setBadgeTextColor(ContextCompat.getColor(this, R.color.primary));
-                badge.setVisible(true);
-            } else {
-                chatTab.removeBadge();
-            }
-        }
-    }
-
-    private void setupViewPager() {
-        MainPagerAdapter adapter = new MainPagerAdapter(this);
-        viewPager.setAdapter(adapter);
-
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            tab.setText(position == 0 ? "Лента" : "Чаты");
-        }).attach();
     }
 
     @Override
@@ -650,15 +616,9 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(0, 0);
     }
 
-    private static class MainPagerAdapter extends FragmentStateAdapter {
-        public MainPagerAdapter(@NonNull FragmentActivity fragmentActivity) { super(fragmentActivity); }
-        @NonNull @Override public Fragment createFragment(int position) {
-            return position == 0 ? new LentaFragment() : new ChatListFragment();
-        }
-        @Override public int getItemCount() { return 2; }
-    }
-
     @Override protected void onResume() { super.onResume(); updateStatus("online"); }
     @Override protected void onPause() { super.onPause(); updateStatus(System.currentTimeMillis()); }
     private void updateStatus(Object status) { if (userRef != null) userRef.child("status").setValue(status); }
+
+
 }

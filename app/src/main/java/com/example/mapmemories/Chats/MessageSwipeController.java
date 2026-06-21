@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.view.HapticFeedbackConstants;
-import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -18,6 +17,7 @@ public class MessageSwipeController extends ItemTouchHelper.Callback {
 
     private final Context context;
     private final SwipeControllerActions buttonsActions;
+    private final SwipeCondition swipeCondition;   // новое поле
     private Drawable replyIcon;
 
     private boolean replyTriggered = false;
@@ -30,15 +30,23 @@ public class MessageSwipeController extends ItemTouchHelper.Callback {
         void onReplyClicked(int position);
     }
 
-    public MessageSwipeController(Context context, SwipeControllerActions buttonsActions) {
+    public interface SwipeCondition {
+        boolean canSwipe(int position);
+    }
+
+    public MessageSwipeController(Context context, SwipeControllerActions buttonsActions, SwipeCondition swipeCondition) {
         this.context = context;
         this.buttonsActions = buttonsActions;
-        this.replyIcon = ContextCompat.getDrawable(context, R.drawable.ic_refresh); // или ic_reply
+        this.swipeCondition = swipeCondition;
+        this.replyIcon = ContextCompat.getDrawable(context, R.drawable.ic_refresh);
     }
 
     @Override
     public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
-
+        // Запрещаем свайп, если условие не позволяет
+        if (swipeCondition != null && !swipeCondition.canSwipe(viewHolder.getAbsoluteAdapterPosition())) {
+            return 0;  // никаких движений
+        }
         return makeMovementFlags(0, ItemTouchHelper.LEFT);
     }
 
@@ -49,7 +57,7 @@ public class MessageSwipeController extends ItemTouchHelper.Callback {
 
     @Override
     public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-
+        // не используется, потому что мы не доводим до onSwiped
     }
 
     @Override

@@ -9,6 +9,8 @@
     <color name="online_indicator">#4CAF50</color>
     <color name="offline_indicator">#FF5252</color>
 
+    <color name="checkbox_selector">#FF5252</color>
+
     <color name="chat_me_bg">#4B4B4B</color>
     <color name="chat_me_text">#FFFFFF</color>
     <color name="chat_other_bg">#E4E7EB</color>

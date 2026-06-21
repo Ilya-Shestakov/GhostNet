@@ -1,6 +1,7 @@
 package com.example.mapmemories.Chats;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class ChatMessage implements Serializable{
 
@@ -22,6 +23,9 @@ public class ChatMessage implements Serializable{
     private String replySenderId;
     private String replyText;
     private String reaction;
+
+    private List<String> mediaUrls;
+    private List<String> mediaTypes;
 
     private int selfDestructTime;
 
@@ -101,6 +105,11 @@ public class ChatMessage implements Serializable{
 
 
 
+    public List<String> getMediaUrls() { return mediaUrls; }
+    public void setMediaUrls(List<String> mediaUrls) { this.mediaUrls = mediaUrls; }
+
+    public List<String> getMediaTypes() { return mediaTypes; }
+    public void setMediaTypes(List<String> mediaTypes) { this.mediaTypes = mediaTypes; }
 
     public void setSelfDestructTime(int selfDestructTime) { this.selfDestructTime = selfDestructTime; }
 

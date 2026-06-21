@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.mapmemories" >
+    package="com.example.mapmemories">
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -22,16 +22,30 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
 
-
     <application
         android:name=".GhostNetApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="GhostNet"
         android:theme="@style/Theme.MapMemories"
-        android:usesCleartextTraffic="true" >
+        android:usesCleartextTraffic="true">
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.mapmemories.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".Chats.AlbumViewerActivity"
+            android:exported="false" />
         <activity android:name=".Settings.CacheManagementActivity" />
         <activity android:name=".Info.SecurityInfoActivity" />
+
         <activity
             android:name=".Info.FAQDetailActivity"
             android:parentActivityName=".Info.SecurityInfoActivity"
@@ -39,8 +53,7 @@
         <activity
             android:name=".Chats.AccountMigrationActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
-        <activity
-            android:name=".Chats.ChatLockSetupActivity" />
+        <activity android:name=".Chats.ChatLockSetupActivity" />
         <activity
             android:name=".Chats.OneTimeViewerActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
@@ -58,8 +71,8 @@
             tools:ignore="Instantiatable" />
         <activity
             android:name=".Chats.MediaPreviewActivity"
-            android:theme="@style/Theme.Translucent"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Translucent" />
         <activity
             android:name=".Settings.Setting"
             android:exported="false"
@@ -80,7 +93,6 @@
             android:exported="false" />
         <activity
             android:name=".Lenta.PickLocationActivity"
-
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
         <activity
             android:name=".Lenta.Map"
@@ -108,7 +120,7 @@
             android:theme="@style/Theme.MapMemories.Transparent" />
         <activity
             android:name=".LogRegStart.SplashActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
