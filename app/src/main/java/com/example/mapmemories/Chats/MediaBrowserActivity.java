@@ -250,10 +250,17 @@ public class MediaBrowserActivity extends AppCompatActivity {
     }
 
     private void performDelete(ChatMessage msg, boolean forEveryone) {
+        String realId = msg.getMessageId();
+        if (realId.contains("_v_")) {
+            realId = realId.split("_v_")[0];
+        }
+
         if (forEveryone) {
-            FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages").child(msg.getMessageId()).removeValue();
+            FirebaseDatabase.getInstance().getReference("chats").child(chatId)
+                    .child("messages").child(realId).removeValue();
         } else {
-            FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages").child(msg.getMessageId()).child("deletedBy").setValue(currentUserId);
+            FirebaseDatabase.getInstance().getReference("chats").child(chatId)
+                    .child("messages").child(realId).child("deletedBy").setValue(currentUserId);
         }
         new Thread(() -> {
             AppDatabase.getDatabase(this).localMessageDao().deleteById(msg.getMessageId());

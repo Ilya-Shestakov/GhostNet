@@ -43,9 +43,8 @@ public class MessageSwipeController extends ItemTouchHelper.Callback {
 
     @Override
     public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
-        // Запрещаем свайп, если условие не позволяет
         if (swipeCondition != null && !swipeCondition.canSwipe(viewHolder.getAbsoluteAdapterPosition())) {
-            return 0;  // никаких движений
+            return 0;
         }
         return makeMovementFlags(0, ItemTouchHelper.LEFT);
     }

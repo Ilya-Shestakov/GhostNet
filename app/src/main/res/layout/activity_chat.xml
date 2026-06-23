@@ -530,6 +530,7 @@
             android:orientation="horizontal"
             android:paddingHorizontal="12dp"
             android:paddingVertical="8dp"
+            android:elevation="10dp"
             android:gravity="bottom"
             android:clipChildren="false"
             android:clipToPadding="false">

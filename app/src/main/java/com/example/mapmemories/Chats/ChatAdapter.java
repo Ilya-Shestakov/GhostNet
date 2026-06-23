@@ -35,8 +35,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
@@ -259,7 +261,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         boolean isUploading = message.getMessageId() != null && uploadingMessageIds.contains(message.getMessageId());
 
         holder.albumLayout.setVisibility(View.GONE);
-        holder.albumRecycler.setVisibility(View.GONE);
 
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.contentLayout.getLayoutParams();
 
@@ -320,10 +321,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.ivTimerBadge.setVisibility(View.GONE);
         holder.imageProgressBar.setVisibility(View.GONE);
         holder.tvReactionBadge.setVisibility(View.GONE);
-        holder.ivReadStatus.setVisibility(View.GONE);
         holder.chatAttachedImage.setImageDrawable(null);
         holder.tvTextMessage.setVisibility(View.GONE);
 
+        if (holder.tvTextMessage.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) holder.tvTextMessage.getLayoutParams();
+            lp.topMargin = 0;
+            holder.tvTextMessage.setLayoutParams(lp);
+        }
 
 
         if (isHighlighted) {
@@ -464,49 +469,105 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 holder.tvVoiceDuration.setOnClickListener(playPauseListener);
                 holder.voiceLayout.setOnClickListener(playPauseListener);
             }
+
         } else if ("album".equals(message.getType())) {
-            holder.tvTextMessage.setVisibility(View.GONE);   // обычный текст не нужен
+            List<String> urls = message.getMediaUrls();
+            if (urls == null || urls.isEmpty()) {
+                holder.albumLayout.setVisibility(View.GONE);
+                holder.tvTextMessage.setVisibility(View.GONE); // Скрываем текст, если нет данных
+                return;
+            }
+
+            int size = urls.size();
             holder.albumLayout.setVisibility(View.VISIBLE);
-            if (isUploading) {
-                holder.imageProgressBar.setVisibility(View.VISIBLE);
-                holder.albumRecycler.setVisibility(View.GONE);
+
+            // --- ВОТ ЭТОТ БЛОК НУЖНО ДОБАВИТЬ ДЛЯ ТЕКСТА ---
+            // Внутри else if ("album".equals(message.getType()))
+            String caption = getDecryptedContent(message);
+            if (caption != null && !caption.isEmpty()) {
+                holder.tvTextMessage.setVisibility(View.VISIBLE);
+                holder.tvTextMessage.setText(caption);
+
+                // ДОБАВЛЯЕМ ОТСТУП ДЛЯ ТЕКСТА ПОД ФОТО
+                if (holder.tvTextMessage.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) holder.tvTextMessage.getLayoutParams();
+                    lp.topMargin = (int) (8 * context.getResources().getDisplayMetrics().density);
+                    holder.tvTextMessage.setLayoutParams(lp);
+                }
             } else {
-                holder.imageProgressBar.setVisibility(View.GONE);
-                holder.albumRecycler.setVisibility(View.VISIBLE);
+                holder.tvTextMessage.setVisibility(View.GONE);
             }
+            // ----------------------------------------------
 
-            String cap = getDecryptedContent(message);
-            if (cap != null && !cap.isEmpty()) {
-                holder.albumCaption.setText(cap);
-                holder.albumCaption.setVisibility(View.VISIBLE);
-            } else {
-                holder.albumCaption.setVisibility(View.GONE);
-            }
+            // Сброс состояния анимаций
+            holder.albumViewPager.setAlpha(1f);
+            holder.albumViewPager.setScaleX(1f);
+            holder.albumViewPager.setScaleY(1f);
+            holder.albumGridRecycler.setVisibility(View.GONE);
+            holder.albumGridRecycler.setAlpha(0f);
+            holder.tvAlbumCounter.setAlpha(1f);
+            holder.tvAlbumCounter.setText("1 / " + size);
 
-            List<String> urls = message.getMediaUrls() != null ? message.getMediaUrls() : new ArrayList<>();
-            List<String> types = message.getMediaTypes() != null ? message.getMediaTypes() : new ArrayList<>();
-
-            AlbumMediaAdapter albumAdapter = new AlbumMediaAdapter(
-                    context, urls, types,
-                    (url, pos) -> {
-                        Intent intent = new Intent(context, AlbumViewerActivity.class);
-                        intent.putStringArrayListExtra("mediaUrls", new ArrayList<>(urls));
-                        intent.putStringArrayListExtra("mediaTypes", new ArrayList<>(types));
-                        intent.putExtra("startIndex", pos);
-                        context.startActivity(intent);
+            // Настройка ViewPager (как было раньше)
+            AlbumPagerAdapter pagerAdapter = new AlbumPagerAdapter(context, urls, new AlbumPagerAdapter.OnAlbumClickListener() {
+                @Override
+                public void onClick(View v, int realIdx) {
+                    if (context instanceof ChatActivity) {
+                        ((ChatActivity) context).openGalleryWithFlattening(v, message, realIdx);
                     }
-            );
-            holder.albumRecycler.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
-            holder.albumRecycler.setAdapter(albumAdapter);
+                }
 
-            holder.albumRecycler.setOnTouchListener((v, event) -> {
-                v.getParent().requestDisallowInterceptTouchEvent(true);
-                return false;
+                @Override
+                public void onLongClick(View v, int realIdx) {
+                    v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                    holder.albumGridRecycler.setVisibility(View.VISIBLE);
+                    holder.albumViewPager.animate().alpha(0).scaleX(0.8f).scaleY(0.8f).setDuration(300).start();
+                    holder.albumGridRecycler.animate().alpha(1).scaleX(1f).scaleY(1f).setDuration(300).start();
+                    holder.tvAlbumCounter.animate().alpha(0).setDuration(200).start();
+                }
+            });
+            holder.albumViewPager.setAdapter(pagerAdapter);
+
+            int startPos = size * 500;
+            holder.albumViewPager.setCurrentItem(startPos, false);
+
+            holder.albumViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+                @Override
+                public void onPageSelected(int position) {
+                    int current = (position % size) + 1;
+                    holder.tvAlbumCounter.setText(current + " / " + size);
+                }
             });
 
+            // Настройка Сетки (Grid)
+            AlbumGridAdapter gridAdapter = new AlbumGridAdapter(context, urls, gridPos -> {
+                int currentViewPagerPos = holder.albumViewPager.getCurrentItem();
+                int currentRealIdx = currentViewPagerPos % size;
+                int diff = gridPos - currentRealIdx;
+                holder.albumViewPager.setCurrentItem(currentViewPagerPos + diff, false);
+
+                holder.albumGridRecycler.animate().alpha(0f).scaleX(1.2f).scaleY(1.2f).setDuration(300)
+                        .withEndAction(() -> holder.albumGridRecycler.setVisibility(View.GONE)).start();
+                holder.albumViewPager.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(300).start();
+                holder.tvAlbumCounter.animate().alpha(1f).setDuration(200).start();
+            });
+            holder.albumGridRecycler.setLayoutManager(new GridLayoutManager(context, 3));
+            holder.albumGridRecycler.setAdapter(gridAdapter);
+
+            // Блокировка свайпа
+            View viewPagerChild = holder.albumViewPager.getChildAt(0);
+            if (viewPagerChild != null) {
+                viewPagerChild.setOnTouchListener((v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        v.getParent().requestDisallowInterceptTouchEvent(true);
+                        if (context instanceof ChatActivity) {
+                            ((ChatActivity) context).isTouchInsideAlbum = true;
+                        }
+                    }
+                    return false;
+                });
+            }
         }
-
-
 
         if (message.getReaction() != null && !message.getReaction().isEmpty()) {
             holder.tvReactionBadge.setVisibility(View.VISIBLE);
@@ -611,12 +672,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             currentMenu = null;
             dismissBlocked = true;
             dismissHandler.postDelayed(() -> dismissBlocked = false, 150);
-            // Проверяем то же самое сообщение (через обычный тег)
+
             Object tag = anchorView.getTag();
             if (tag instanceof String && tag.equals(message.getMessageId())) {
-                return; // просто закрыли, не открываем новое
+                return;
             }
-            return; // закрыли, новое меню не открываем (блокировка действует)
+            return;
         }
 
         int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
@@ -788,11 +849,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         MaterialCardView imageContainer;
         ProgressBar imageProgressBar;
         ImageButton btnPlayPause;
+        RecyclerView albumGridRecycler;
+        ViewPager2 albumViewPager;
+        RecyclerView albumThumbRecycler;
 
-
-        LinearLayout albumLayout;
-        RecyclerView albumRecycler;
+        MaterialCardView albumLayout;
         TextView albumCaption;
+
+        TextView tvAlbumCounter;
 
 
         public ViewHolder(@NonNull View itemView) {
@@ -820,17 +884,26 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             ivTimerBadge = itemView.findViewById(R.id.ivTimerBadge);
             imageProgressBar = itemView.findViewById(R.id.imageProgressBar);
             secretOverlay = itemView.findViewById(R.id.secretOverlay);
+
+            albumGridRecycler = itemView.findViewById(R.id.albumGridRecycler);
+
+            tvAlbumCounter = itemView.findViewById(R.id.tvAlbumCounter);
+
             albumLayout = itemView.findViewById(R.id.albumLayout);
-            albumRecycler = itemView.findViewById(R.id.albumRecycler);
             albumCaption = itemView.findViewById(R.id.albumCaption);
+            albumViewPager = itemView.findViewById(R.id.albumViewPager);
+
         }
     }
+
     private static class PostCacheData {
         String title, imageUrl;
         PostCacheData(String title, String imageUrl) { this.title = title; this.imageUrl = imageUrl; }
     }
+
     private static class AudioProgress {
         int current, max;
         AudioProgress(int current, int max) { this.current = current; this.max = max; }
     }
+
 }

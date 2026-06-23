@@ -541,18 +541,17 @@ public class ChatActivity extends AppCompatActivity {
         MessageSwipeController swipeController = new MessageSwipeController(this,
                 position -> {
                     ChatMessage message = messageList.get(position);
-                    new Handler(getMainLooper()).postDelayed(() -> {
-                        setupReplyPreview(message, false);
-                    }, 150);
+                    setupReplyPreview(message, false);
                 },
                 position -> {
-                    // Запрещаем свайп для альбомов
+                    // РАЗРЕШАЕМ свайп, если это НЕ альбом
                     if (position >= 0 && position < messageList.size()) {
                         return !"album".equals(messageList.get(position).getType());
                     }
                     return true;
                 }
         );
+
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeController);
         itemTouchHelper.attachToRecyclerView(chatRecyclerView);
 
@@ -1270,28 +1269,8 @@ public class ChatActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onImageClicked(View thumbView, ChatMessage message) {
-                List<ChatMessage> imagesOnly = new ArrayList<>();
-                int position = 0;
-                for (ChatMessage msg : messageList) {
-                    if ("image".equals(msg.getType())) {
-                        if (msg.getMessageId().equals(message.getMessageId())) {
-                            position = imagesOnly.size();
-                        }
-                        imagesOnly.add(msg);
-                    }
-                }
-
-                Intent intent = new Intent(ChatActivity.this, MediaBrowserActivity.class);
-                intent.putExtra("images", (java.io.Serializable) imagesOnly);
-                intent.putExtra("position", position);
-                intent.putExtra("chatId", chatId);
-
-                androidx.core.app.ActivityOptionsCompat options =
-                        androidx.core.app.ActivityOptionsCompat.makeSceneTransitionAnimation(
-                                ChatActivity.this, thumbView, "photo_" + message.getMessageId());
-
-                startActivity(intent, options.toBundle());
+            public void onImageClicked(View thumbView, ChatMessage clickedMessage) {
+                openGalleryWithFlattening(thumbView, clickedMessage, 0);
             }
 
             @Override
@@ -1308,6 +1287,25 @@ public class ChatActivity extends AppCompatActivity {
                 startActivity(intent, options.toBundle());
             }
         };
+    }
+
+    private void scrollToBottom() {
+        if (chatAdapter == null || chatAdapter.getItemCount() == 0) return;
+
+        chatRecyclerView.post(() -> {
+            LinearLayoutManager layoutManager = (LinearLayoutManager) chatRecyclerView.getLayoutManager();
+            if (layoutManager != null) {
+                int lastItemIndex = chatAdapter.getItemCount() - 1;
+
+                // 1. Мгновенный скролл к последнему элементу с отступом 0 от нижнего края
+                layoutManager.scrollToPositionWithOffset(lastItemIndex, 0);
+
+                // 2. Дополнительная проверка через микро-задержку (на случай подгрузки картинок)
+                chatRecyclerView.postDelayed(() -> {
+                    layoutManager.scrollToPositionWithOffset(lastItemIndex, 0);
+                }, 100);
+            }
+        });
     }
 
     private void showPremiumDeleteDialog(ChatMessage message, boolean isMine) {
@@ -1469,6 +1467,55 @@ public class ChatActivity extends AppCompatActivity {
         });
         dialog.show();
     }
+
+
+    public void openGalleryWithFlattening(View thumbView, ChatMessage targetMsg, int subIndex) {
+        List<ChatMessage> flattenedList = new ArrayList<>();
+        int targetPosition = 0;
+
+        for (ChatMessage msg : messageList) {
+            if ("image".equals(msg.getType())) {
+                if (msg.getMessageId().equals(targetMsg.getMessageId())) {
+                    targetPosition = flattenedList.size();
+                }
+                flattenedList.add(msg);
+            } else if ("album".equals(msg.getType())) {
+                List<String> urls = msg.getMediaUrls();
+                if (urls != null) {
+                    for (int i = 0; i < urls.size(); i++) {
+                        // Создаем "виртуальное" сообщение для каждой фотки альбома
+                        ChatMessage virtualMsg = new ChatMessage();
+                        virtualMsg.setMessageId(msg.getMessageId() + "_v_" + i); // Уникальный ID для анимации
+                        virtualMsg.setSenderId(msg.getSenderId());
+                        virtualMsg.setImageUrl(urls.get(i));
+                        virtualMsg.setRemoteUrl(urls.get(i));
+                        virtualMsg.setTimestamp(msg.getTimestamp());
+                        virtualMsg.setType("image");
+
+                        // Если это то самое сообщение и тот самый индекс в альбоме
+                        if (msg.getMessageId().equals(targetMsg.getMessageId()) && i == subIndex) {
+                            targetPosition = flattenedList.size();
+                        }
+                        flattenedList.add(virtualMsg);
+                    }
+                }
+            }
+        }
+
+        Intent intent = new Intent(ChatActivity.this, MediaBrowserActivity.class);
+        intent.putExtra("images", (java.io.Serializable) flattenedList);
+        intent.putExtra("position", targetPosition);
+        intent.putExtra("chatId", chatId);
+
+        // Анимация перехода
+        androidx.core.app.ActivityOptionsCompat options =
+                androidx.core.app.ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        ChatActivity.this, thumbView, "photo_" + flattenedList.get(targetPosition).getMessageId());
+
+        startActivity(intent, options.toBundle());
+    }
+
+
 
     private Handler updateHandler = new Handler();
     private Runnable pendingUpdate = null;
@@ -2467,6 +2514,7 @@ public class ChatActivity extends AppCompatActivity {
                 List<ChatMessage> sorted = new ArrayList<>(messageList);
                 Collections.sort(sorted, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
                 updateMessageList(sorted);
+                scrollToBottom();
 
                 if (!messageList.isEmpty()) {
                     chatRecyclerView.scrollToPosition(messageList.size() - 1);
@@ -2478,6 +2526,15 @@ public class ChatActivity extends AppCompatActivity {
             });
         }).start();
     }
+
+    private boolean isTouchAt(MotionEvent ev, View view) {
+        if (view == null || view.getVisibility() != View.VISIBLE) return false;
+        int[] loc = new int[2];
+        view.getLocationOnScreen(loc);
+        return ev.getRawX() > loc[0] && ev.getRawX() < loc[0] + view.getWidth() &&
+                ev.getRawY() > loc[1] && ev.getRawY() < loc[1] + view.getHeight();
+    }
+
 
     private void runCurtainAnimation() {
         FrameLayout overlay = findViewById(R.id.loadingOverlayContainer);
@@ -2571,6 +2628,7 @@ public class ChatActivity extends AppCompatActivity {
                         }
 
                         scheduleUpdate();
+                        scrollToBottom();
                         chatRecyclerView.post(() -> chatRecyclerView.scrollToPosition(messageList.size() - 1));
                     });
                 }).start();
@@ -2696,40 +2754,57 @@ public class ChatActivity extends AppCompatActivity {
      * |                           СВАЙП ЗАКРЫТИЯ                              |
      * |-----------------------------------------------------------------------| */
 
+    public boolean isTouchInsideAlbum = false;
+
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (rootLayout == null) return super.dispatchTouchEvent(ev);
 
-        if (chatAdapter != null && !chatAdapter.getSelectedMessageIds().isEmpty()) return super.dispatchTouchEvent(ev);
-        if (isGalleryOpen) return super.dispatchTouchEvent(ev);
-
         switch (ev.getActionMasked()) {
-            case android.view.MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_DOWN:
                 startX = ev.getRawX();
                 startY = ev.getRawY();
                 isSwipingToClose = false;
-                canSwipeBack = startX < (screenWidth * 0.9f);
+
+                // 1. Проверяем, не нажали ли мы на альбом
+                isTouchInsideAlbum = false;
+                for (int i = 0; i < chatRecyclerView.getChildCount(); i++) {
+                    View child = chatRecyclerView.getChildAt(i);
+                    View album = child.findViewById(R.id.albumLayout);
+                    if (album != null && album.getVisibility() == View.VISIBLE) {
+                        int[] loc = new int[2];
+                        album.getLocationOnScreen(loc);
+                        if (ev.getRawX() > loc[0] && ev.getRawX() < loc[0] + album.getWidth() &&
+                                ev.getRawY() > loc[1] && ev.getRawY() < loc[1] + album.getHeight()) {
+                            isTouchInsideAlbum = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. Разрешаем свайп закрытия, если мы НЕ в альбоме
+                // Увеличил зону до 25% экрана для комфорта
+                canSwipeBack = !isTouchInsideAlbum && (startX < screenWidth * 0.25f);
                 break;
 
-            case android.view.MotionEvent.ACTION_MOVE:
-                if (!canSwipeBack) break;
+            case MotionEvent.ACTION_MOVE:
+                if (!canSwipeBack || isTouchInsideAlbum) break;
+
                 float dx = ev.getRawX() - startX;
                 float dy = ev.getRawY() - startY;
 
-                if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                // Если тянем вправо сильнее, чем вверх/вниз — начинаем закрытие
+                if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
                     isSwipingToClose = true;
-                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    if (imm != null && getCurrentFocus() != null) imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
-
-                    android.view.MotionEvent cancelEvent = android.view.MotionEvent.obtain(ev);
-                    cancelEvent.setAction(android.view.MotionEvent.ACTION_CANCEL);
+                    // Отменяем тач у RecyclerView, чтобы сообщения не дергались
+                    MotionEvent cancelEvent = MotionEvent.obtain(ev);
+                    cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
                     super.dispatchTouchEvent(cancelEvent);
                     cancelEvent.recycle();
                 }
 
                 if (isSwipingToClose) {
-                    dx = ev.getRawX() - startX;
-                    rootLayout.setTranslationX(Math.max(0, dx * 1.2f));
+                    rootLayout.setTranslationX(Math.max(0, dx));
                     return true;
                 }
                 break;
@@ -2738,21 +2813,19 @@ public class ChatActivity extends AppCompatActivity {
             case MotionEvent.ACTION_CANCEL:
                 if (isSwipingToClose) {
                     float dxUp = ev.getRawX() - startX;
-
-                    if (dxUp > screenWidth * 0.15f) {
+                    if (dxUp > screenWidth * 0.3f) { // Если протащили больше 30% — закрываем
                         rootLayout.animate()
                                 .translationX(screenWidth)
-                                .setDuration(150)
-                                .withEndAction(() -> {
-                                    finish();
-                                    overridePendingTransition(0, 0);
-                                }).start();
+                                .setDuration(200)
+                                .withEndAction(this::finish)
+                                .start();
                     } else {
-                        rootLayout.animate().translationX(0).setDuration(150).start();
+                        rootLayout.animate().translationX(0).setDuration(200).start();
                     }
                     isSwipingToClose = false;
                     return true;
                 }
+                isTouchInsideAlbum = false;
                 break;
         }
         return super.dispatchTouchEvent(ev);
