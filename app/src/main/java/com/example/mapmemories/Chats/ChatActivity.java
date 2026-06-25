@@ -2766,7 +2766,7 @@ public class ChatActivity extends AppCompatActivity {
                 startY = ev.getRawY();
                 isSwipingToClose = false;
 
-                // 1. Проверяем, не нажали ли мы на альбом
+                // 1. Проверяем, не в альбоме ли мы (чтобы не мешать карусели)
                 isTouchInsideAlbum = false;
                 for (int i = 0; i < chatRecyclerView.getChildCount(); i++) {
                     View child = chatRecyclerView.getChildAt(i);
@@ -2782,21 +2782,23 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 }
 
-                // 2. Разрешаем свайп закрытия, если мы НЕ в альбоме
-                // Увеличил зону до 25% экрана для комфорта
-                canSwipeBack = !isTouchInsideAlbum && (startX < screenWidth * 0.25f);
+                // 2. Разрешаем свайп ТОЛЬКО от левого края (15% экрана)
+                // Это стандарт для Android, чтобы не было ложных срабатываний
+                canSwipeBack = !isTouchInsideAlbum && (startX < screenWidth * 0.15f);
                 break;
 
             case MotionEvent.ACTION_MOVE:
-                if (!canSwipeBack || isTouchInsideAlbum) break;
+                if (!canSwipeBack) break;
 
                 float dx = ev.getRawX() - startX;
                 float dy = ev.getRawY() - startY;
 
-                // Если тянем вправо сильнее, чем вверх/вниз — начинаем закрытие
-                if (!isSwipingToClose && dx > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                // Если мы сдвинули палец вправо больше чем на порог чувствительности
+                if (!isSwipingToClose && dx > touchSlop && dx > Math.abs(dy)) {
                     isSwipingToClose = true;
-                    // Отменяем тач у RecyclerView, чтобы сообщения не дергались
+
+                    // КРИТИЧЕСКИЙ МОМЕНТ: Посылаем CANCEL всем вьюхам (включая фото)
+                    // Это "отменяет" клик по фото, оно не откроется при отпускании пальца
                     MotionEvent cancelEvent = MotionEvent.obtain(ev);
                     cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
                     super.dispatchTouchEvent(cancelEvent);
@@ -2804,8 +2806,9 @@ public class ChatActivity extends AppCompatActivity {
                 }
 
                 if (isSwipingToClose) {
+                    // Двигаем экран вслед за пальцем
                     rootLayout.setTranslationX(Math.max(0, dx));
-                    return true;
+                    return true; // Поглощаем событие, чтобы фото его не видело
                 }
                 break;
 
@@ -2813,19 +2816,24 @@ public class ChatActivity extends AppCompatActivity {
             case MotionEvent.ACTION_CANCEL:
                 if (isSwipingToClose) {
                     float dxUp = ev.getRawX() - startX;
-                    if (dxUp > screenWidth * 0.3f) { // Если протащили больше 30% — закрываем
+                    // Если протащили больше 20% экрана — закрываем чат
+                    if (dxUp > screenWidth * 0.20f) {
                         rootLayout.animate()
                                 .translationX(screenWidth)
-                                .setDuration(200)
+                                .setDuration(150) // Быстрая анимация
                                 .withEndAction(this::finish)
                                 .start();
                     } else {
-                        rootLayout.animate().translationX(0).setDuration(200).start();
+                        // Возвращаем экран на место
+                        rootLayout.animate()
+                                .translationX(0)
+                                .setDuration(150)
+                                .start();
                     }
                     isSwipingToClose = false;
+                    canSwipeBack = false;
                     return true;
                 }
-                isTouchInsideAlbum = false;
                 break;
         }
         return super.dispatchTouchEvent(ev);
