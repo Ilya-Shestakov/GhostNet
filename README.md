@@ -1,66 +1,89 @@
-# GhostNet 🛡️
-> Защищенная мобильная экосистема для обмена медиаконтентом с поддержкой автономного режима.
+GhostNet 🛡️
 
-[![Java](https://img.shields.io/badge/Language-Java-orange.svg)](https://www.java.com/)
-[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
-[![Firebase](https://img.shields.io/badge/Backend-Firebase-yellow.svg)](https://firebase.google.com/)
-[![Security](https://img.shields.io/badge/Security-AES--GCM-blue.svg)](#)
+    GhostNet — это высокопроизводительная мобильная экосистема для обмена данными, спроектированная с упором на криптографическую защиту и концепцию Offline-first.
 
----
+![alt text](https://img.shields.io/badge/Language-Java-orange.svg?style=flat-square&logo=java)
 
-## Демонстрация
+
+![alt text](https://img.shields.io/badge/Platform-Android-green.svg?style=flat-square&logo=android)
+
+
+![alt text](https://img.shields.io/badge/Backend-Firebase-yellow.svg?style=flat-square&logo=firebase)
+
+
+![alt text](https://img.shields.io/badge/Security-AES--GCM-blue.svg?style=flat-square)
+
+
+![alt text](https://img.shields.io/badge/License-MIT-lightgrey.svg?style=flat-square)
+
+📱 Демонстрация
 <p align="center">
-  <img src="app/media_git/video_2026-06-01_13-51-26.mp4" width="300" title="Demo GhostNet">
+<img src="app/media_git/demo_preview.gif" width="300" title="GhostNet Interface">
+<br>
+<i>(Если гифка тяжелая, можно оставить ссылку на видео ниже)</i>
+<br>
+<a href="app/media_git/video_2026-06-01_13-51-26.mp4">🎬 Смотреть полное видео демонстрации</a>
 </p>
+🚀 О проекте
 
----
+Проект разрабатывался в течение 8 месяцев как ответ на современные вызовы приватности. В отличие от стандартных мессенджеров, GhostNet объединяет функционал социальной сети и инструмента для безопасной передачи чувствительной информации.
+Ключевые особенности:
 
-## О проекте
-**GhostNet** — это результат 8-месячной разработки, направленной на создание безопасной среды для общения. Проект объединяет функционал социальной сети и мессенджера, работая по принципу **Offline-first**: все данные доступны пользователю даже при отсутствии сети благодаря сложной системе синхронизации.
+    Offline-first Architecture: Полная работоспособность при отсутствии сети. Интеллектуальная синхронизация данных при восстановлении соединения.
 
-**Основная цель:** обеспечить приватность данных и безопастное общение.
+    Hybrid Storage: Оптимизированное сочетание локальной БД (Room) и облачной инфраструктуры.
 
----
+    Media Optimization: Ленивая загрузка контента и кэширование, минимизирующее потребление трафика.
 
-№# Технологический стек
-- **Frontend:** Java (Android SDK), MVVM Architecture.
-- **Local Database:** Room (SQLite) — реализация офлайн-очереди и кэширования.
-- **Backend:** Firebase (Authentication, Firestore, Realtime Database, Storage).
-- **Image/Media:** Glide (оптимизированная подгрузка), MapView (геоинтеграция), Cloudinary (хранилище тяжелых данных).
-- **Security:** Java Cryptography Architecture (JCA).
+🛠 Технологический стек
+Слой	Технологии
+Mobile Core	Java (Android SDK), MVVM Architecture
+Local Data	Room Persistence Library (SQLite), SharedPreferences
+Backend / Cloud	Firebase (Auth, Firestore, RTDB, Storage), Cloudinary API
+Media & UI	Glide, MapView SDK, Custom UI Components
+Security	Java Cryptography Architecture (JCA), Android Keystore
+🔐 Информационная безопасность (Deep Dive)
 
----
+Как исследователь в области ИБ (Bug Bounty hunter и призер ВСОШ), я интегрировал в проект механизмы защиты, соответствующие современным стандартам:
 
-## Информационная безопасность (Deep Dive)
-Как призер ВСОШ по ИБ и участник Bug Bounty программ, я уделил особое внимание защите данных:
-- **End-to-End Encryption (E2EE):** Сообщения шифруются на устройстве перед отправкой.
-- **Алгоритм:** Используется **AES-GCM (128-bit tag)**. Выбор пал на GCM, так как он обеспечивает не только конфиденциальность, но и проверку целостности данных (Authenticated Encryption).
-- **Защита от перехвата:** Архитектура спроектирована с учетом минимизации рисков манипуляции состояниями (State Manipulation) и перехвата данных в транзите.
+    End-to-End Encryption (E2EE): Весь контент шифруется непосредственно на клиенте.
 
----
+    Режим шифрования AES-GCM (128-bit tag):
 
-## Архитектурные решения
-- **Hybrid Data System:** Реализован механизм прозрачного переключения между локальным кэшем (Room) и облаком (Firebase Persistence).
-- **Real-time Engine:** Использование динамических слушателей Firebase для реализации статусов «печатает...» и «online» с минимальной задержкой.
-- **Media Handling:** Система обработки «тяжелых» файлов с индикацией прогресса загрузки и автоматической очисткой кэша.
+        Выбран режим AEAD (Authenticated Encryption with Associated Data).
 
----
+        Гарантирует не только конфиденциальность, но и целостность сообщений (защита от атак типа Bit-flipping и Padding Oracle).
 
-## Планы по развитию (Roadmap)
-- [ ] Миграция серверной части на инфраструктуру **Yandex Cloud**.
-- [ ] Внедрение биометрической аутентификации для доступа к приложению.
-- [ ] Реализация групповых зашифрованных чатов.
+    Hardware-backed Security: Приватные ключи генерируются и хранятся внутри Android Keystore, что исключает их извлечение даже при компрометации ОС.
 
----
+    Zero-Knowledge Approach: Серверная часть выступает лишь ретранслятором, не имея доступа к ключам дешифровки.
 
-## Автор
-**Шестаков Илья** 
-- **Bug Bounty:** [Профиль на Standoff 365](https://standoff365.com/profile/shvi/)
-- **VK:** [@ilya_5340](https://vk.com/ilya_5340)
-- **Email:** ilya.shestakov08@gmail.com
+🏗 Архитектура системы
 
----
+    Data Layer: Реализован паттерн Repository для управления потоками данных между Firebase и Room.
 
-*Проект разработан специально для конкурса ITMO.STARS*
+    Real-time Engine: Использование Event-listeners для мгновенного обновления статусов («печатает...», «в сети») с оптимизацией количества запросов.
 
----
+    Security Layer: Выделенный модуль для криптографических операций, изолированный от UI-логики.
+
+🗺 Дорожная карта (Roadmap)
+
+    Cloud Migration: Переход на Yandex Cloud (Object Storage & Managed PostgreSQL) для повышения масштабируемости.
+
+    Biometrics: Интеграция BiometricPrompt для дополнительной защиты входа.
+
+    Group Privacy: Реализация протокола группового обмена ключами (на базе Double Ratchet или аналогичных).
+
+👨‍💻 Автор
+
+Шестаков Илья — Android Developer & Security Researcher
+
+    Bug Bounty: Profile on Standoff 365
+
+    VK: @ilya_5340
+
+    LinkedIn: [Ваша ссылка, если есть]
+
+<p align="center">
+<i>Специально для конкурса <b>ITMO.STARS</b> ⭐️</i>
+</p>
