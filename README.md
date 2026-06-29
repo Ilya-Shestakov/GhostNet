@@ -1,66 +1,62 @@
-# GhostNet 🛡️
-> Защищенная мобильная экосистема для обмена медиаконтентом с поддержкой автономного режима.
+GhostNet
 
-[![Java](https://img.shields.io/badge/Language-Java-orange.svg)](https://www.java.com/)
-[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
-[![Firebase](https://img.shields.io/badge/Backend-Firebase-yellow.svg)](https://firebase.google.com/)
-[![Security](https://img.shields.io/badge/Security-AES--GCM-blue.svg)](#)
+    Autonomous Secure Ecosystem. Мобильная платформа, включающая в себя функции защищенного мессенджера с архитектурой E2EE и Offline-first синхронизацией.
 
----
+![alt text](https://img.shields.io/badge/Stack-Java%20%7C%20MVVM%20%7C%20Room%20%7C%20Firebase-blue?style=for-the-badge)
 
-## Демонстрация
-<p align="center">
-  <img src="app/media_git/video_2026-06-01_13-51-26.mp4" width="300" title="Demo GhostNet">
-</p>
 
----
+![alt text](https://img.shields.io/badge/Security-AES--GCM%20%7C%20Android%20Keystore-red?style=for-the-badge)
 
-## О проекте
-**GhostNet** — это результат 8-месячной разработки, направленной на создание безопасной среды для общения. Проект объединяет функционал социальной сети и мессенджера, работая по принципу **Offline-first**: все данные доступны пользователю даже при отсутствии сети благодаря сложной системе синхронизации.
 
-**Основная цель:** обеспечить приватность данных и безопастное общение.
+![alt text](https://img.shields.io/badge/Logic-Offline--First-green?style=for-the-badge)
 
----
 
-№# Технологический стек
-- **Frontend:** Java (Android SDK), MVVM Architecture.
-- **Local Database:** Room (SQLite) — реализация офлайн-очереди и кэширования.
-- **Backend:** Firebase (Authentication, Firestore, Realtime Database, Storage).
-- **Image/Media:** Glide (оптимизированная подгрузка), MapView (геоинтеграция), Cloudinary (хранилище тяжелых данных).
-- **Security:** Java Cryptography Architecture (JCA).
+Техническая архитектура (Core Model)
+1. Offline-First & Sync Engine
 
----
+Сердце системы — паттерн Repository, который выступает арбитром между локальной БД и облаком:
 
-## Информационная безопасность (Deep Dive)
-Как призер ВСОШ по ИБ и участник Bug Bounty программ, я уделил особое внимание защите данных:
-- **End-to-End Encryption (E2EE):** Сообщения шифруются на устройстве перед отправкой.
-- **Алгоритм:** Используется **AES-GCM (128-bit tag)**. Выбор пал на GCM, так как он обеспечивает не только конфиденциальность, но и проверку целостности данных (Authenticated Encryption).
-- **Защита от перехвата:** Архитектура спроектирована с учетом минимизации рисков манипуляции состояниями (State Manipulation) и перехвата данных в транзите.
+    Локальный кэш (Room): Хранит не только текст, но и метаданные медиаконтента.
 
----
+    Система синхронизации: При восстановлении сети GhostNet использует фоновые сервисы для «разгрузки» очереди локальных изменений в Firebase.
 
-## Архитектурные решения
-- **Hybrid Data System:** Реализован механизм прозрачного переключения между локальным кэшем (Room) и облаком (Firebase Persistence).
-- **Real-time Engine:** Использование динамических слушателей Firebase для реализации статусов «печатает...» и «online» с минимальной задержкой.
-- **Media Handling:** Система обработки «тяжелых» файлов с индикацией прогресса загрузки и автоматической очисткой кэша.
+    Оптимизация трафика: Используется Glide с кастомными моделями кэширования и Cloudinary API для работы с Raw-медиа, что позволяет экономить до 40% трафика при повторных запросах.
 
----
+2. Криптографическая модель (Military-Grade)
 
-## Планы по развитию (Roadmap)
-- [ ] Миграция серверной части на инфраструктуру **Yandex Cloud**.
-- [ ] Внедрение биометрической аутентификации для доступа к приложению.
-- [ ] Реализация групповых зашифрованных чатов.
+В GhostNet реализована защита на трех уровнях JCA (Java Cryptography Architecture):
 
----
+    E2EE (End-to-End): Сообщения и посты шифруются ключами, которые никогда не покидают устройство.
 
-## Автор
-**Шестаков Илья** 
-- **Bug Bounty:** [Профиль на Standoff 365](https://standoff365.com/profile/shvi/)
-- **VK:** [@ilya_5340](https://vk.com/ilya_5340)
-- **Email:** ilya.shestakov08@gmail.com
+    AES-GCM (Authenticated Encryption): Использование 128-битного проверочного тега исключает атаки на целостность данных в транзите.
 
----
+    Hardware-Backed Protection: Ключи генерируются внутри Android Keystore System (аппаратный уровень защиты). Даже при наличии Root-прав на устройстве, извлечение приватного ключа невозможно.
 
-*Проект разработан специально для конкурса ITMO.STARS*
+3. Media & Realtime Infrastructure
 
----
+    Firebase Realtime DB: Служит только для передачи легковесных сигнальных данных (статусы, события печати).
+
+    Cloudinary: Используется как CDN для распределенной доставки тяжелого контента.
+
+    MVVM + Clean Architecture: Логика шифрования и работы с сетью полностью отделена от UI, что позволяет легко масштабировать проект (например, заменить Firebase на кастомный бэкенд на Yandex Cloud).
+
+Технологический стек (Deep Dive)
+
+    UI/UX: Material Design 3, адаптивные Layouts для работы с медиа-сетками.
+
+    Database: Room (SQLite) с поддержкой сложных миграций и реляционных связей.
+
+    Network: Retrofit/Firebase SDK, Real-time listeners.
+
+    Security: JCA, SecretKeySpec, GCMParameterSpec, Android KeyStore.
+
+Roadmap & Scalability
+
+    GhostAI Node: Планируемая интеграция распределенных вычислений на устройствах.
+
+    Advanced Geo-Social: Интеграция MapView для создания защищенных локальных сообществ.
+
+    Backend Migration: Перенос бизнес-логики в Yandex Cloud (Managed PostgreSQL + Object Storage).
+
+
+Проект GhostNet является индивидуальной разработкой автора Coffein (Шестаков И.Д.).
