@@ -1,8 +1,7 @@
-package com.example.mapmemories.Chats;
+package com.example.mapmemories.Chats.media;
 
 import android.app.Dialog;
 import android.app.DownloadManager;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -16,15 +15,15 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.viewpager2.widget.ViewPager2;
+
+import com.example.mapmemories.Chats.ChatMessage;
 import com.example.mapmemories.R;
 import com.example.mapmemories.database.AppDatabase;
 import com.github.chrisbanes.photoview.PhotoView;

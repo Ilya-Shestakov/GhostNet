@@ -29,6 +29,9 @@
         android:label="GhostNet"
         android:theme="@style/Theme.MapMemories"
         android:usesCleartextTraffic="true">
+        <activity
+            android:name=".Chats.LocalSendingActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -41,11 +44,10 @@
         </provider>
 
         <activity
-            android:name=".Chats.AlbumViewerActivity"
+            android:name=".Chats.media.AlbumViewerActivity"
             android:exported="false" />
         <activity android:name=".Settings.CacheManagementActivity" />
         <activity android:name=".Info.SecurityInfoActivity" />
-
         <activity
             android:name=".Info.FAQDetailActivity"
             android:parentActivityName=".Info.SecurityInfoActivity"
@@ -58,7 +60,7 @@
             android:name=".Chats.OneTimeViewerActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
-            android:name=".Chats.MediaBrowserActivity"
+            android:name=".Chats.media.MediaBrowserActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
         <activity
@@ -70,7 +72,7 @@
             android:theme="@style/Theme.AppCompat.NoActionBar"
             tools:ignore="Instantiatable" />
         <activity
-            android:name=".Chats.MediaPreviewActivity"
+            android:name=".Chats.media.MediaPreviewActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Translucent" />
         <activity

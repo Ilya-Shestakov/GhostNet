@@ -1,4 +1,4 @@
-package com.example.mapmemories.Chats;
+package com.example.mapmemories.Chats.media;
 
 import android.content.Context;
 import android.view.View;

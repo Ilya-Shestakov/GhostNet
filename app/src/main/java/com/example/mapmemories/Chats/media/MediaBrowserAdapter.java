@@ -1,11 +1,12 @@
-package com.example.mapmemories.Chats;
+package com.example.mapmemories.Chats.media;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import com.bumptech.glide.Glide;
+
+import com.example.mapmemories.Chats.ChatMessage;
 import com.example.mapmemories.R;
 import com.github.chrisbanes.photoview.PhotoView;
 import java.util.List;

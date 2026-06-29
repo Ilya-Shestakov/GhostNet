@@ -5,7 +5,6 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -41,7 +40,6 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -77,7 +75,8 @@ import androidx.work.WorkManager;
 
 import com.bumptech.glide.Glide;
 import com.cloudinary.Cloudinary;
-import com.example.mapmemories.Profile.User;
+import com.example.mapmemories.Chats.media.MediaBrowserActivity;
+import com.example.mapmemories.Chats.media.MediaPickerSheet;
 import com.example.mapmemories.Profile.UserProfileActivity;
 import com.example.mapmemories.R;
 import com.example.mapmemories.Settings.Setting;
@@ -108,7 +107,6 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -118,7 +116,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChatActivity extends AppCompatActivity {
 
@@ -1639,8 +1636,22 @@ public class ChatActivity extends AppCompatActivity {
         android.util.TypedValue outValue = new android.util.TypedValue();
         getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
 
+        TextView btnLocal = new TextView(this);
+        btnLocal.setText("Локальная отправка");
+        btnLocal.setTextSize(16f);
+        btnLocal.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        btnLocal.setPadding(48, 36, 64, 36);
+        btnLocal.setBackgroundResource(outValue.resourceId);
+
+        menuLayout.addView(btnLocal);
+
+        btnLocal.setOnClickListener(v -> {
+            Intent intent = new Intent(this, LocalSendingActivity.class);
+            startActivity(intent);
+        });
+
         TextView btnPhoto = new TextView(this);
-        btnPhoto.setText("📷 Фото и Видео");
+        btnPhoto.setText("Фото");
         btnPhoto.setTextSize(16f);
         btnPhoto.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
         btnPhoto.setPadding(48, 36, 64, 36);
@@ -1666,7 +1677,7 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         TextView btnFile = new TextView(this);
-        btnFile.setText("📁 Документ / Файл");
+        btnFile.setText("Документ / Файл");
         btnFile.setTextSize(16f);
         btnFile.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
         btnFile.setPadding(48, 36, 64, 36);
